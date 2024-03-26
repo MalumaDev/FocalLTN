@@ -19,7 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--csv-path', type=str, default="MDadd_log_ltn.csv")
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--n-examples-train', type=int, default=1500)
+    parser.add_argument('--n-examples-train', type=str, default="all")
     parser.add_argument('--n-examples-test', type=int, default=2500)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--seed', type=int, default=-1)
@@ -33,6 +33,7 @@ def parse_args():
 
 args = parse_args()
 n_examples_train = args['n_examples_train']
+n_examples_train = int(n_examples_train) if n_examples_train != "all" else "all"
 n_examples_test = args['n_examples_test']
 batch_size = args['batch_size']
 EPOCHS = args['epochs']
@@ -66,7 +67,6 @@ ds_train, ds_test = data.get_mnist_op_dataset(
 """ LTN MODEL AND LOSS """
 ### Predicates
 logits_model = baselines.SingleDigit(inputs_as_a_list=True)
-Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
 ### Variables
 d1 = ltn.Variable("digits1", range(10))
 d2 = ltn.Variable("digits2", range(10))
@@ -77,8 +77,11 @@ And = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
 Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=1))
 if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Sum(), semantics="forall")
+    Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
+    Digit.__call__ = Digit.log
 else:
     Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
+    Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
@@ -103,8 +106,8 @@ def axioms(images_x1, images_x2, images_y1, images_y2, labels_z, alpha_exists):
         Exists(
             (d1, d2, d3, d4),
             And(
-                And(Digit.log([images_x1, d1]), Digit.log([images_x2, d2])),
-                And(Digit.log([images_y1, d3]), Digit.log([images_y2, d4]))
+                And(Digit([images_x1, d1]), Digit([images_x2, d2])),
+                And(Digit([images_y1, d3]), Digit([images_y2, d4]))
             ),
             mask=equals([labels_z, add([two_digit_number([d1, d2]), two_digit_number([d3, d4])])]),
             alpha=alpha_exists

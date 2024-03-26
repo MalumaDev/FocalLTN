@@ -1,6 +1,6 @@
 import os
 
-n_examples = 1500
+n_examples = "all"
 for seed in range(5):
     for j in [1., 0.75, .5, .25]:
         os.system(
