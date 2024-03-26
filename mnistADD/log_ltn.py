@@ -40,6 +40,10 @@ csv_path = Path(args['csv_path'])
 use_focal = args['use_focal']
 imbalance = args['imbalance']
 
+if csv_path.exists():
+    print(f"File {csv_path} already exists. Exiting.")
+    sys.exit(0)
+
 csv_path.parent.mkdir(parents=True, exist_ok=True)
 
 if args['seed'] == -1:
@@ -74,7 +78,7 @@ Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=1))
 if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Sum(), semantics="forall")
 else:
-    Forall = ltn.log.Wrapper_Quantifier(partial(FocalAggreg, gamma=args['gamma']), semantics="forall")
+    Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
@@ -171,7 +175,7 @@ if use_focal:
 run = wandb.init(
     project="NeSy24",
     config=args,
-    name=name + f"_{imbalance}_{n_examples_train}_{args['seed']}",
+    name= name + f"_{imbalance}_{n_examples_train}_{args['seed']}",
     entity="grains-polito"
 )
 
@@ -183,5 +187,6 @@ commons.train(
     train_step,
     test_step,
     csv_path=csv_path,
-    scheduled_parameters=scheduled_parameters
+    scheduled_parameters=scheduled_parameters,
+    logger=run
 )
