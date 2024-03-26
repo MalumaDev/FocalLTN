@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class FocalAggreg:
+class FocalAggreg():
 
     def __init__(self, gamma=2, stable=True):
         # self.p = p
@@ -46,7 +46,7 @@ class FocalAggreg:
             shape.
             Raises when the 'mask' is not boolean.
         """
-        xs = tf.math.sigmoid(xs) + 1e-80
+        xs = xs + 1e-80
 
         if mask is not None:
             if mask.shape != xs.shape:
@@ -60,4 +60,4 @@ class FocalAggreg:
         xs = tf.math.log(xs)
 
         return -self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - masked), self.gamma), xs), axis=axis,
-                                    keepdims=keepdims)
+                                                keepdims=keepdims)

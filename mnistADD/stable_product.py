@@ -17,7 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--csv-path', type=str, default="MDadd_ltn_stable_product_p2.csv")
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--n-examples-train', type=int, default=15000)
+    parser.add_argument('--n-examples-train', type=str, default="all")
     parser.add_argument('--n-examples-test', type=int, default=2500)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--p', type=int, default=2)
@@ -31,6 +31,7 @@ def parse_args():
 
 args = parse_args()
 n_examples_train = args['n_examples_train']
+n_examples_train = int(n_examples_train) if n_examples_train != "all" else "all"
 n_examples_test = args['n_examples_test']
 batch_size = args['batch_size']
 EPOCHS = args['epochs']

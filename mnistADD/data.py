@@ -1,3 +1,5 @@
+import random
+
 import tensorflow as tf
 import numpy as np
 
@@ -67,41 +69,46 @@ def get_mnist_op_dataset(
     a_max, a_min = np.argmax(counts), np.argmin(counts)
     factor = counts[a_min] / counts[a_max]
 
-    if factor < imbalance:
-        max_n = counts[a_min] / imbalance
-        for j, c in enumerate(unique):
-            if counts[j] > max_n:
-                mask = label_train == j
-                toberemoved = np.random.choice(np.where(mask)[0], int(counts[j] - max_n), replace=False)
-                label_train = np.delete(label_train, toberemoved)
-                img_train = np.delete(img_train, toberemoved, axis=0)
-
-    else:
-        min_n = counts[a_max] * imbalance
-        mask = label_train == unique[a_min]
-        toberemoved = np.random.choice(np.where(mask)[0], int(counts[a_min] - min_n), replace=False)
+    for j, c in enumerate(unique):
+        mask = label_train == j
+        toberemoved = np.random.choice(np.where(mask)[0], int(counts[j] - counts[a_min]), replace=False)
         label_train = np.delete(label_train, toberemoved)
         img_train = np.delete(img_train, toberemoved, axis=0)
 
-    if count_train * n_operands > len(label_train):
-        raise ValueError("The MNIST dataset comes with 60000 training examples. \
-            Cannot fetch %i examples for each %i operands for training." % (count_train, n_operands))
-        # TODO: repeat the dataset if needed
-    if count_test * n_operands > len(label_test):
-        raise ValueError("The MNIST dataset comes with 10000 test examples. \
-            Cannot fetch %i examples for each %i operands for testing." % (count_test, n_operands))
+    imbalanced_class = np.random.choice(unique)
 
+    if count_train != "all":
+        raise NotImplementedError("Imbalance not implemented")
 
-    img_per_operand_train = [img_train[i * count_train:i * count_train + count_train] for i in range(n_operands)]
-    label_per_operand_train = [label_train[i * count_train:i * count_train + count_train] for i in range(n_operands)]
+    n_examples_for_op = counts[a_min] // n_operands
+    img_per_operand_train, label_per_operand_train = [], []
+    # img_per_operand_train = [img_train[i * count_train:i * count_train + count_train] for i in range(n_operands)]
+    # label_per_operand_train = [label_train[i * count_train:i * count_train + count_train] for i in range(n_operands)]
+    # label_result_train = np.apply_along_axis(op, 0, label_per_operand_train)
+    for j in range(n_operands):
+        store_idx = []
+        for i in unique.tolist():
+            idxs = np.where(label_train == i)[0]
+            idxs = np.random.choice(idxs, n_examples_for_op if i != imbalanced_class else int(n_examples_for_op * imbalance), replace=False)
+            store_idx.extend(idxs.tolist())
+        random.shuffle(store_idx)
+        label_per_operand_train.append(np.array(label_train[store_idx]))
+        img_per_operand_train.append(img_train[store_idx])
+        label_train = np.delete(label_train, store_idx)
+        img_train = np.delete(img_train, store_idx, axis=0)
+
+    # label_per_operand_train = np.stack(label_per_operand_train)
+    # img_per_operand_train = np.stack(img_per_operand_train)
+
     label_result_train = np.apply_along_axis(op, 0, label_per_operand_train)
+
     img_per_operand_test = [img_test[i * count_test:i * count_test + count_test] for i in range(n_operands)]
     label_per_operand_test = [label_test[i * count_test:i * count_test + count_test] for i in range(n_operands)]
     label_result_test = np.apply_along_axis(op, 0, label_per_operand_test)
 
     ds_train = tf.data.Dataset.from_tensor_slices(tuple(img_per_operand_train) + (label_result_train,)) \
-        .take(count_train).shuffle(buffer_size).batch(batch_size)
+        .shuffle(buffer_size).batch(batch_size)
     ds_test = tf.data.Dataset.from_tensor_slices(tuple(img_per_operand_test) + (label_result_test,)) \
-        .take(count_test).shuffle(buffer_size).batch(batch_size)
+        .shuffle(buffer_size).batch(batch_size)
 
     return ds_train, ds_test
