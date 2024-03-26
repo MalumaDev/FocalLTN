@@ -1,1 +1,1 @@
-Using this logLTN implementation as base: [https://github.com/logictensornetworks/logictensornetworks/tree/feat-wrapper](logictensornetworks)
+Using this logLTN implementation as base: [logictensornetworks](https://github.com/logictensornetworks/logictensornetworks/tree/feat-wrapper)
