@@ -15,5 +15,5 @@ for seed in range(5):
             f" --n-examples-train {n_examples} --seed {seed} --imbalance {j}")
 
         os.system(
-            f"python log_ltn.py --csv-path results/{n_examples}/logltn_default_{j}_{seed}.csv"
+            f"python log_ltn.py --csv-path results/{n_examples}/logltn_default_{j}_{seed}_focal.csv"
             f" --n-examples-train {n_examples} --seed {seed} --imbalance {j} --use_focal")

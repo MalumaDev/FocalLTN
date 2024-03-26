@@ -38,6 +38,10 @@ csv_path = Path(args['csv_path'])
 p_forall = args["p"]
 imbalance = args['imbalance']
 
+if csv_path.exists():
+    print(f"File {csv_path} already exists. Exiting.")
+    sys.exit(0)
+
 csv_path.parent.mkdir(parents=True, exist_ok=True)
 
 if args['seed'] == -1:
