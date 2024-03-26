@@ -1,0 +1,1 @@
+Using this logLTN implementation as base: [https://github.com/logictensornetworks/logictensornetworks/tree/feat-wrapper](logictensornetworks)
