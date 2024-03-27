@@ -46,7 +46,7 @@ class FocalAggreg():
             shape.
             Raises when the 'mask' is not boolean.
         """
-        xs = xs + 1e-80
+        pt = tf.math.exp(xs)
 
         if mask is not None:
             if mask.shape != xs.shape:
@@ -54,10 +54,10 @@ class FocalAggreg():
             if not mask.dtype == tf.bool:  # isinstance(mask, torch.BoolTensor):
                 raise ValueError("'mask' must be a torch.BoolTensor.")
         else:
-            mask = tf.ones_like(xs, dtype=tf.bool)
+            mask = tf.ones_like(pt, dtype=tf.bool)
 
-        masked = tf.where(~mask, tf.zeros_like(xs), xs)
-        xs = tf.math.log(xs)
+        masked = tf.where(~mask, tf.zeros_like(pt), pt)
+        # pt = tf.math.log(pt)
 
-        return -self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - masked), self.gamma), xs), axis=axis,
+        return self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - masked), self.gamma), xs), axis=axis,
                                                 keepdims=keepdims)

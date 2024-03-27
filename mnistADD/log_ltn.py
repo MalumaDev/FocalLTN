@@ -1,6 +1,4 @@
-import argparse
 import sys
-from functools import partial
 from pathlib import Path
 from random import randint
 
@@ -75,13 +73,12 @@ d4 = ltn.Variable("digits4", range(10))
 ### Operators
 And = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
 Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=1))
+Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
 if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Sum(), semantics="forall")
-    Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
-    Digit.__call__ = Digit.log
 else:
     Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
-    Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
+    # Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
@@ -106,8 +103,8 @@ def axioms(images_x1, images_x2, images_y1, images_y2, labels_z, alpha_exists):
         Exists(
             (d1, d2, d3, d4),
             And(
-                And(Digit([images_x1, d1]), Digit([images_x2, d2])),
-                And(Digit([images_y1, d3]), Digit([images_y2, d4]))
+                And(Digit.log([images_x1, d1]), Digit.log([images_x2, d2])),
+                And(Digit.log([images_y1, d3]), Digit.log([images_y2, d4]))
             ),
             mask=equals([labels_z, add([two_digit_number([d1, d2]), two_digit_number([d3, d4])])]),
             alpha=alpha_exists
