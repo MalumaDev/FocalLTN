@@ -30,7 +30,7 @@ class MLP(tf.keras.Model):
 
 logits_model = MLP(nr_of_clusters)
 C = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
-cluster = ltn.Variable("cluster",range(nr_of_clusters))
+cluster = ltn.Variable("cluster", range(nr_of_clusters))
 
 x = ltn.Variable("x",features)
 y = ltn.Variable("y",features)
