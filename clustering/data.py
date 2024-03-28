@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import random
 
 @dataclass
 class TCGA_DATASET:
@@ -38,11 +39,46 @@ def load_data() -> TCGA_DATASET:
     labels = label_encoder.fit_transform(label_names)
     return TCGA_DATASET(features, labels, label_encoder)
 
-def load_pca_data(features_file: str) -> TCGA_DATASET:
+def load_pca_data(features_file: str, imbalance=1.) -> TCGA_DATASET:
     features = np.genfromtxt(features_file, delimiter=",", skip_header=1)
     labels_file = "TCGA-PANCAN-HiSeq-801x20531/labels.csv"
     label_names = np.genfromtxt(labels_file, delimiter=",", usecols=(1,), skip_header=1, dtype="str")
     label_encoder = LabelEncoder()
+
+    neg_imbalance = imbalance < 0
+    if neg_imbalance:
+        imbalance = -imbalance
+
+    unique, counts = np.unique(label_names, return_counts=True)
+    a_max, a_min = np.argmax(counts), np.argmin(counts)
+    factor = counts[a_min] / counts[a_max]
+
+    for j, c in enumerate(unique):
+        mask = label_names == c
+        toberemoved = np.random.choice(np.where(mask)[0], int(counts[j] - counts[a_min]), replace=False)
+        label_names = np.delete(label_names, toberemoved)
+        features = np.delete(features, toberemoved, axis=0)
+
+    imbalanced_class = np.random.choice(unique)
+    n_examples_for_op = counts[a_min]
+    img_per_operand_train, label_per_operand_train = [], []
+
+    store_idx = []
+    for i in unique.tolist():
+        idxs = np.where(label_names == i)[0]
+        if not neg_imbalance:
+            idxs = np.random.choice(idxs,
+                                    n_examples_for_op if i != imbalanced_class else int(n_examples_for_op * imbalance),
+                                    replace=False)
+        else:
+            idxs = np.random.choice(idxs,
+                                    n_examples_for_op if i == imbalanced_class else int(n_examples_for_op * imbalance),
+                                    replace=False)
+        store_idx.extend(idxs.tolist())
+    random.shuffle(store_idx)
+    label_names = label_names[store_idx]
+    features = features[store_idx]
+
     labels = label_encoder.fit_transform(label_names)
     return TCGA_DATASET(features, labels, label_encoder)
 
@@ -81,13 +117,12 @@ def save_pdf_predictions(
         pca_features: np.ndarray,
         predicted_labels: np.ndarray,
         true_label_names: np.ndarray,
-        save_prefix: str = ""
+        csv_path: str = ""
 ) -> None:
     pcadf = pd.DataFrame(pca_features, columns=[f"component_{i}" for i in range(pca_features.shape[1])])
     pcadf["predicted_cluster"] = predicted_labels
     pcadf["true_label"] = true_label_names
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    pcadf.to_csv(save_prefix+current_time+".csv", index=False, sep=",")
+    pcadf.to_csv(csv_path, index=False, sep=",")
 
 def plot_predictions(
         pca_features: np.ndarray, 
