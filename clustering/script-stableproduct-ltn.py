@@ -2,6 +2,7 @@ import tensorflow as tf
 from sklearn.metrics.pairwise import euclidean_distances
 import numpy as np
 import ltn
+from focal import FocalAggreg
 
 from random import randint
 import wandb
@@ -14,6 +15,7 @@ def parse_args():
     parser.add_argument('--csv-path', type=str, default="Cluster_ltn_stable_product_p2.csv")
     parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--p', type=int, default=2)
+    parser.add_argument('--use_focal', action='store_true')
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--imbalance', type=float, default=0.99)
     args = parser.parse_args()
@@ -23,8 +25,10 @@ def parse_args():
 args = parse_args()
 epochs = args['epochs']
 imbalance = args['imbalance']
+use_focal = args['use_focal']
 p_forall = args["p"]
 csv_path = Path(args['csv_path'])
+
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")
@@ -73,7 +77,10 @@ And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
 Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
 Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
 Equiv = ltn.Wrapper_Connective(ltn.fuzzy_ops.Equiv(ltn.fuzzy_ops.And_Prod(),ltn.fuzzy_ops.Implies_Reichenbach()))
-Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall),semantics="forall")
+if not use_focal:
+    Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
+else:
+    Forall = ltn.Wrapper_Quantifier(FocalAggreg(is_log=False), semantics="forall")
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=6),semantics="exists")
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=6))
 
@@ -105,11 +112,14 @@ p_exists = np.concatenate([
         [1]*epochs_fixed_schedule,
         np.linspace(1, 4, epochs-epochs_fixed_schedule)])
 
+name = "SP"
+if use_focal:
+    name += f"_focal{args['gamma']}"
 run = wandb.init(
     project="NeSy24Cluster",
     config=args,
-    name=f"SP_{p_forall}_{imbalance}_{args['seed']}",
-    entity="grains-polito")
+    name=name + f"_{p_forall}_{imbalance}_{n_examples_train}_{args['seed']}",
+    entity="grains-polito"
 
 for epoch in range(epochs):
     with tf.GradientTape() as tape:
