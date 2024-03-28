@@ -48,10 +48,10 @@ class FocalAggreg():
             Raises when the 'mask' is not boolean.
         """
         if self.is_log:
-            pt = tf.math.exp(xs)
+            pt = tf.math.exp(xs/self.alpha)
         else:
             pt = xs
-            xs = tf.math.log(xs)
+            xs = tf.math.log(xs)*self.alpha
 
         return self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
                                                keepdims=keepdims)

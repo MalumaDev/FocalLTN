@@ -6,6 +6,7 @@ for seed in range(5):  # range(5):
             if k == -1 and j == 1.:
                 continue
             # Stable Product p=2
+
             os.system(
                 f"python script-stableproduct-ltn.py --csv-path results/stable_product_p2_{j * k}_{seed}.csv"
                 f" --p 2 --seed {seed} --imbalance {j * k}")
@@ -14,7 +15,7 @@ for seed in range(5):  # range(5):
             os.system(
                 f"python script-stableproduct-ltn.py --csv-path results/stable_product_p6_{j * k}_{seed}.csv"
                 f" --p 6 --seed {seed} --imbalance {j * k}")
-
+            
             # Stable Product p=2 with Focal Loss
             os.system(
                 f"python script-stableproduct-ltn.py --csv-path results/stable_product_p2_{j * k}_{seed}_focal.csv"
@@ -23,7 +24,7 @@ for seed in range(5):  # range(5):
             # os.system(
             #     f"python stable_product.py --csv-path results/{n_examples}/stable_product_p6_{j}_{seed}.csv"
             #     f" --n-examples-train {n_examples} --p 6 --seed {seed} --imbalance {j}")
-
+            
             # Log-Product
             os.system(
                 f"python script-focal-ltn.py --csv-path results/logltn_default_{j * k}_{seed}.csv"

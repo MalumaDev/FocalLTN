@@ -76,7 +76,7 @@ Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=5))
 if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(), semantics="forall")
 else:
-    Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
+    Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], alpha=5), semantics="forall")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=5),semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())

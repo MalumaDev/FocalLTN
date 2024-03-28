@@ -81,7 +81,7 @@ Equiv = ltn.Wrapper_Connective(ltn.fuzzy_ops.Equiv(ltn.fuzzy_ops.And_Prod(),ltn.
 if not use_focal:
     Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
 else:
-    Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], is_log=False), semantics="forall")
+    Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], alpha=5, is_log=False), semantics="forall")
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=6),semantics="exists")
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=6))
 
