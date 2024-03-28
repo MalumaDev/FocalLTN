@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--p', type=int, default=2)
     parser.add_argument('--use_focal', action='store_true')
+    parser.add_argument('--gamma', type=float, default=2)
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--imbalance', type=float, default=0.99)
     args = parser.parse_args()
@@ -80,7 +81,7 @@ Equiv = ltn.Wrapper_Connective(ltn.fuzzy_ops.Equiv(ltn.fuzzy_ops.And_Prod(),ltn.
 if not use_focal:
     Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
 else:
-    Forall = ltn.Wrapper_Quantifier(FocalAggreg(is_log=False), semantics="forall")
+    Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], is_log=False), semantics="forall")
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=6),semantics="exists")
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=6))
 
@@ -118,9 +119,9 @@ if use_focal:
 run = wandb.init(
     project="NeSy24Cluster",
     config=args,
-    name=name + f"_{p_forall}_{imbalance}_{n_examples_train}_{args['seed']}",
+    name=name + f"_{p_forall}_{imbalance}_{args['seed']}",
     entity="grains-polito"
-
+)
 for epoch in range(epochs):
     with tf.GradientTape() as tape:
         loss = - axioms(p_exists[epoch])
