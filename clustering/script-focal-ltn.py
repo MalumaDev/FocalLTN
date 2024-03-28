@@ -129,12 +129,12 @@ for epoch in range(epochs):
         sat = tf.math.exp(-log_sat)
         loss = 1 - sat
         print("Epoch %d: Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
-        run.log({"Epoch": epoch, "Sat Level": sat, "Loss": loss})
+        run.log({"Sat Level": sat, "Loss": loss})
 log_sat = axioms(alpha_exists[epoch])
 sat = tf.math.exp(-log_sat)
 loss = 1 - sat
 print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
-run.log({"Epoch": epoch, "Sat Level": sat, "Loss": loss})
+run.log({"Sat Level": sat, "Loss": loss})
 
 # EVALUATE
 predictions = tf.math.argmax(C([x,cluster]).tensor,axis=1)
