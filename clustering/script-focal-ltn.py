@@ -126,8 +126,8 @@ for epoch in range(epochs):
     optimizer.apply_gradients(zip(grads, logits_model.trainable_variables))
     if epoch%100 == 0:
         log_sat = axioms(alpha_exists[epoch])
-        loss = - log_sat
-        sat = tf.math.exp(log_sat)
+        loss = tf.math.exp(- log_sat)
+        sat = 1 - loss
         print("Epoch %d: Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
         run.log({"Epoch": epoch, "Sat Level": sat, "Loss": loss})
 log_sat = axioms(alpha_exists[epoch])
