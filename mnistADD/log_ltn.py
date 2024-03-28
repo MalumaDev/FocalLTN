@@ -17,13 +17,13 @@ def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--csv-path', type=str, default="MDadd_log_ltn.csv")
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--n-examples-train', type=str, default="all")
+    parser.add_argument('--n-examples-train', type=str, default=1500)
     parser.add_argument('--n-examples-test', type=int, default=2500)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--use_focal', action='store_true')
     parser.add_argument('--gamma', type=float, default=2)
-    parser.add_argument('--imbalance', type=float, default=0.99)
+    parser.add_argument('--imbalance', type=float, default=-0.75)
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
@@ -78,7 +78,6 @@ if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Sum(), semantics="forall")
 else:
     Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
-    # Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())

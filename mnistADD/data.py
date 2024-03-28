@@ -1,7 +1,7 @@
 import random
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 
 def get_mnist_data_as_numpy():
@@ -64,10 +64,15 @@ def get_mnist_op_dataset(
     #         Cannot fetch %i examples for each %i operands for testing." % (count_test, n_operands))
 
     img_train, label_train, img_test, label_test = get_mnist_data_as_numpy()
+    neg_imbalance = imbalance < 0
+    if neg_imbalance:
+        imbalance = -imbalance
 
     unique, counts = np.unique(label_train, return_counts=True)
     a_max, a_min = np.argmax(counts), np.argmin(counts)
-    factor = counts[a_min] / counts[a_max]
+    if count_train != "all":
+        assert (count_train / len(unique)) * n_operands <= counts[a_min], "Not enough examples for the minority class"
+        counts[a_min] = int((count_train / len(unique)) * n_operands)
 
     for j, c in enumerate(unique):
         mask = label_train == j
@@ -76,9 +81,6 @@ def get_mnist_op_dataset(
         img_train = np.delete(img_train, toberemoved, axis=0)
 
     imbalanced_class = np.random.choice(unique)
-
-    if count_train != "all":
-        raise NotImplementedError("Imbalance not implemented")
 
     n_examples_for_op = counts[a_min] // n_operands
     img_per_operand_train, label_per_operand_train = [], []
@@ -89,7 +91,17 @@ def get_mnist_op_dataset(
         store_idx = []
         for i in unique.tolist():
             idxs = np.where(label_train == i)[0]
-            idxs = np.random.choice(idxs, n_examples_for_op if i != imbalanced_class else int(n_examples_for_op * imbalance), replace=False)
+            if not neg_imbalance:
+                idxs = np.random.choice(idxs,
+                                        n_examples_for_op if i != imbalanced_class else int(
+                                            n_examples_for_op * imbalance),
+                                        replace=False)
+            else:
+                idxs = np.random.choice(idxs,
+                                        n_examples_for_op if i == imbalanced_class else int(
+                                            n_examples_for_op * imbalance),
+                                        replace=False)
+
             store_idx.extend(idxs.tolist())
         random.shuffle(store_idx)
         label_per_operand_train.append(np.array(label_train[store_idx]))

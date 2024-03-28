@@ -1,14 +1,17 @@
+import argparse
 import sys
 from pathlib import Path
 from random import randint
 
-import tensorflow as tf
-import wandb
-
-import ltn
-import baselines, data, commons
-import argparse
 import numpy as np
+import tensorflow as tf
+
+import baselines
+import commons
+import data
+import ltn
+import wandb
+from focal import FocalAggreg
 
 
 def parse_args():
@@ -20,6 +23,8 @@ def parse_args():
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--p', type=int, default=2)
     parser.add_argument('--seed', type=int, default=-1)
+    parser.add_argument('--use_focal', action='store_true')
+    parser.add_argument('--gamma', type=float, default=2)
     parser.add_argument('--imbalance', type=float, default=1.)
 
     args = parser.parse_args()
@@ -36,6 +41,7 @@ EPOCHS = args['epochs']
 csv_path = Path(args['csv_path'])
 p_forall = args["p"]
 imbalance = args['imbalance']
+use_focal = args['use_focal']
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")
@@ -44,7 +50,7 @@ if csv_path.exists():
 csv_path.parent.mkdir(parents=True, exist_ok=True)
 
 if args['seed'] == -1:
-    args['seed'] = randint(0, 2**32 - 1)
+    args['seed'] = randint(0, 2 ** 32 - 1)
 
 tf.keras.utils.set_random_seed(args['seed'])
 
@@ -73,7 +79,12 @@ Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
 And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
 Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
 Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
+
+if not use_focal:
+    Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
+else:
+    Forall = ltn.Wrapper_Quantifier(FocalAggreg(is_log=False), semantics="forall")
+
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(), semantics="exists")
 
 # mask
@@ -162,10 +173,13 @@ p_exists_values = np.linspace(p_min, p_max, EPOCHS, dtype=np.float32)
 for epoch in range(EPOCHS):
     scheduled_parameters[epoch] = {"p_schedule": tf.constant(p_exists_values[epoch])}
 
+name = "SP"
+if use_focal:
+    name += f"_focal{args['gamma']}"
 run = wandb.init(
     project="NeSy24",
     config=args,
-    name=f"SP_{p_forall}_{imbalance}_{n_examples_train}_{args['seed']}",
+    name=name + f"_{p_forall}_{imbalance}_{n_examples_train}_{args['seed']}",
     entity="grains-polito"
 )
 

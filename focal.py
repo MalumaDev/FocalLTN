@@ -3,16 +3,17 @@ import tensorflow as tf
 
 class FocalAggreg():
 
-    def __init__(self, gamma=2, stable=True):
+    def __init__(self, gamma=2, stable=True, is_log=True, alpha=1):
         # self.p = p
         self.stable = stable
-        self.alpha = 1
+        self.alpha = alpha
         self.gamma = gamma
+        self.is_log = is_log
 
     def __repr__(self):
         return "FocalAggreg(gamma=" + str(self.gamma) + ", stable=" + str(self.stable) + ")"
 
-    def __call__(self, xs, axis=None, keepdims=False, mask=None):
+    def __call__(self, xs, axis=None, keepdims=False, **kwargs):
         """
         It applies the `pMeanError` aggregation operator to the given formula's :ref:`grounding <notegrounding>`
         on the selected dimensions.
@@ -46,18 +47,11 @@ class FocalAggreg():
             shape.
             Raises when the 'mask' is not boolean.
         """
-        pt = tf.math.exp(xs)
-
-        if mask is not None:
-            if mask.shape != xs.shape:
-                raise ValueError("'xs' and 'mask' must have the same shape.")
-            if not mask.dtype == tf.bool:  # isinstance(mask, torch.BoolTensor):
-                raise ValueError("'mask' must be a torch.BoolTensor.")
+        if self.is_log:
+            pt = tf.math.exp(xs)
         else:
-            mask = tf.ones_like(pt, dtype=tf.bool)
+            pt = xs
+            xs = tf.math.log(xs)
 
-        masked = tf.where(~mask, tf.zeros_like(pt), pt)
-        # pt = tf.math.log(pt)
-
-        return self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - masked), self.gamma), xs), axis=axis,
-                                                keepdims=keepdims)
+        return self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
+                                               keepdims=keepdims)
