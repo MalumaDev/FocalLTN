@@ -42,6 +42,7 @@ csv_path = Path(args['csv_path'])
 p_forall = args["p"]
 imbalance = args['imbalance']
 use_focal = args['use_focal']
+args["task_type"] = "SP"
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")

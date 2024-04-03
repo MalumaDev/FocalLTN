@@ -38,6 +38,7 @@ EPOCHS = args['epochs']
 csv_path = Path(args['csv_path'])
 use_focal = args['use_focal']
 imbalance = args['imbalance']
+args["task_type"] = "log"
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")
