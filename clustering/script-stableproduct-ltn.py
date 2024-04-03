@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument('--gamma', type=float, default=2)
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--imbalance', type=float, default=0.99)
+    parser.add_argument('--forall_only', action='store_true')
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
@@ -68,7 +69,10 @@ class MLP(tf.keras.Model):
 
 logits_model = MLP(nr_of_clusters)
 C = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
-cluster = ltn.Variable("cluster",range(nr_of_clusters))
+cluster_x = ltn.Variable("cluster_x", dataset.labels)
+cluster_y = ltn.Variable("cluster_y", dataset.labels)
+cluster = ltn.Variable("cluster", tf.one_hot(dataset.labels, nr_of_clusters))
+# cluster = ltn.Variable("cluster", range(nr_of_clusters))
 
 x = ltn.Variable("x",features)
 y = ltn.Variable("y",features)
@@ -82,27 +86,49 @@ if not use_focal:
     Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
 else:
     Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], alpha=5, is_log=False), semantics="forall")
+    Forall_s = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_Sum(), semantics="forall")
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=6),semantics="exists")
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=6))
 
 
 eucl_dist = ltn.Function.Lambda(lambda inputs: tf.expand_dims(tf.norm(inputs[0]-inputs[1],axis=1),axis=1))
-is_greater_than = ltn.Predicate.Lambda(lambda inputs: inputs[0] > inputs[1])
+is_greater_than = ltn.Function.Lambda(lambda inputs: inputs[0] > inputs[1])
 close_thr = ltn.Constant(close_threshold, trainable=False)
+equal_of = ltn.Function.Lambda(lambda inputs: inputs[0] == inputs[1])
+and_func = ltn.Function.Lambda(lambda inputs: tf.logical_and(inputs[0] > 0, inputs[1] > 0))
+make_pred = ltn.Predicate.Lambda(lambda input: input)
 
 # CONSTRAINTS
-def axioms(p_exists):
-    axioms = [
-        Forall(x, Exists(cluster, C([x,cluster]),p=p_exists)),
-        Forall(cluster, Exists(x, C([x,cluster]),p=p_exists)),
-        Forall([cluster,x,y], Implies(C([x,cluster]),C([y,cluster])),
-            mask = is_greater_than([close_thr,eucl_dist([x,y])]))
-    ]
-    
+def axioms(p_exists, forall_only=False, use_focal=False):
+    if not forall_only:
+        axioms = [
+            Forall(x, Exists(cluster, C([x,cluster]),p=p_exists)),
+            Forall(cluster, Exists(x, C([x,cluster]),p=p_exists)),
+            Forall([cluster,x,y], Implies(C([x,cluster]),C([y,cluster])),
+                mask = is_greater_than([close_thr,eucl_dist([x,y])]))
+        ]
+    else:
+        if use_focal:
+            t = Forall_s(ltn.diag(x, cluster_x),
+                         Forall(ltn.diag(y, cluster_y),
+                                Implies(C([x, cluster_x]), C([y, cluster_y])),
+                                mask=make_pred(and_func([is_greater_than([close_thr, eucl_dist([x, y])]),
+                                                         equal_of([cluster_x, cluster_y])]))))
+        else:
+            t = Forall(ltn.diag(x, cluster_x),
+                         Forall(ltn.diag(y, cluster_y),
+                                Implies(C([x, cluster_x]), C([y, cluster_y])),
+                                mask=make_pred(and_func([is_greater_than([close_thr, eucl_dist([x, y])]),
+                                                         equal_of([cluster_x, cluster_y])]))))
+        axioms = [
+            Forall(ltn.diag(x, cluster_x), C([x, cluster_x])),
+            Forall(ltn.diag(y, cluster_y), C([y, cluster_y])),
+            t
+        ]
     sat_level = formula_aggregator(axioms).tensor
     return sat_level
 
-axioms(p_exists=6) # first call to build the graph
+axioms(p_exists=6, forall_only=args["forall_only"], use_focal=use_focal) # first call to build the graph
 
 # TRAINING
 trainable_variables = logits_model.trainable_variables
@@ -116,29 +142,31 @@ p_exists = np.concatenate([
 name = "SP"
 if use_focal:
     name += f"_focal{args['gamma']}"
+name_ns = name + f"_{p_forall}_{imbalance}_" + str(args["forall_only"])
+args["name"] = name_ns
 run = wandb.init(
     project="NeSy24Cluster",
     config=args,
-    name=name + f"_{p_forall}_{imbalance}_{args['seed']}",
-    entity="grains-polito"
-)
+    name=name_ns + f"_{args['seed']}",
+    entity="grains-polito")
+
 for epoch in range(epochs):
     with tf.GradientTape() as tape:
-        loss = - axioms(p_exists[epoch])
+        loss = - axioms(p_exists[epoch], forall_only=args["forall_only"], use_focal=use_focal)
     grads = tape.gradient(loss, logits_model.trainable_variables)
     optimizer.apply_gradients(zip(grads, logits_model.trainable_variables))
     if epoch%100 == 0:
-        sat = axioms(p_exists[epoch])
+        sat = axioms(p_exists[epoch], forall_only=args["forall_only"], use_focal=use_focal)
         loss = 1 - sat
         print("Epoch %d: Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
         run.log({"Sat Level": sat, "Loss": loss})
-sat = axioms(p_exists[epoch])
+sat = axioms(p_exists[epoch], forall_only=args["forall_only"], use_focal=use_focal)
 loss = 1 - sat
 print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
 run.log({"Sat Level": sat, "Loss": loss})
 
 # EVALUATE
-predictions = tf.math.argmax(C([x,cluster]).tensor,axis=1)
+predictions = tf.math.argmax(C([x,cluster_x]).tensor,axis=1)
 print(data.adjusted_rand_score(dataset.labels,predictions)) 
 data.save_pdf_predictions(features, predictions, dataset.label_names, csv_path=csv_path)
 run.log({"AdjRandIdx": data.adjusted_rand_score(dataset.labels,predictions)})
