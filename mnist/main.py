@@ -26,20 +26,24 @@ logging.basicConfig(level=logging.INFO)
 @click.option("--out_path", "-o", default="results/test.csv", type=str)
 @click.option("--use_focal", is_flag=True)
 @click.option("--gamma", default=2, type=float)
-@click.option("--a_type", "-t", default="stable", type=str)
 @click.option("--batch_size", "-b", default=64, type=int)
 @click.option("--val_batch_size", "-vb", default=256, type=int)
-def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path, use_focal, gamma, a_type, batch_size,
+def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path, use_focal, gamma, batch_size,
          val_batch_size):
     if seed == -1:
         seed = randint(0, 2 ** 32 - 1)
 
     if use_focal:
-        a_type += "_focal"
+        focal_aggreg_type = "mean"
+        a_type = f"focal_{focal_aggreg_type}"
+    else:
+        a_type = "stable_product"
+        focal_aggreg_type = None
 
     args = locals()
     tf.keras.utils.set_random_seed(seed)
-    ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance, batch_size=batch_size,
+    ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance,
+                                                        batch_size=batch_size,
                                                         val_batch_size=val_batch_size)
     out_path = Path(out_path)
     if out_path.exists():
@@ -62,7 +66,8 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
         Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value), semantics="forall")
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value))
     else:
-        Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=gamma, is_log=False), semantics="forall")
+        Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=gamma, is_log=False, reduce_type=focal_aggreg_type),
+                                        semantics="forall")
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Mean())
 
     def axioms(features, labels, training=False):
@@ -94,7 +99,7 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
                 loss = 1. - sat
         gradients = tape.gradient(loss, Digit.trainable_variables)
         optimizer.apply_gradients(zip(gradients, Digit.trainable_variables))
-        sat = axioms(features, labels) # compute sat without dropout
+        sat = axioms(features, labels)  # compute sat without dropout
         if tf.math.reduce_any(tf.math.is_nan(sat)):
             raise ValueError("NaN detected")
         metrics_dict['train_sat_kb'](sat)
@@ -127,7 +132,8 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
         entity="grains-polito"
     )
 
-    table = wandb.Table(data=list(zip(distribution[0].tolist(), distribution[1].tolist())), columns=["class", "n_samples"])
+    table = wandb.Table(data=list(zip(distribution[0].tolist(), distribution[1].tolist())),
+                        columns=["class", "n_samples"])
     run.log(
         {
             "distribution_classes": wandb.plot.bar(

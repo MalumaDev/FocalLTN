@@ -10,7 +10,7 @@ for n_examples in [600]:
                 imbalance = j * k
                 os.system(
                     f"python main.py --out_path results/{n_examples}/stable_product_p2_{imbalance}_{seed}.csv"
-                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance} -t stable")
+                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance}")
 
                 # Stable Product p=6
                 # os.system(
@@ -18,5 +18,5 @@ for n_examples in [600]:
                 #     f" -n {n_examples} -p 6 --seed {seed} --imbalance {imbalance} -t stable")
 
                 os.system(
-                    f"python main.py --out_path results/{n_examples}/stable_product_focal_p2_{imbalance}_{seed}.csv"
-                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance} -t stable --use_focal")
+                    f"python main.py --out_path results/{n_examples}/focal_mean_{imbalance}_{seed}.csv"
+                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance} --use_focal")
