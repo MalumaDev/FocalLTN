@@ -1,4 +1,5 @@
 import sys
+from functools import partial
 from pathlib import Path
 from random import randint
 
@@ -17,13 +18,13 @@ def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--csv-path', type=str, default="MDadd_log_ltn.csv")
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--n-examples-train', type=str, default=1500)
+    parser.add_argument('--n-examples-train', type=str, default="all")
     parser.add_argument('--n-examples-test', type=int, default=2500)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--use_focal', action='store_true')
     parser.add_argument('--gamma', type=float, default=2)
-    parser.add_argument('--imbalance', type=float, default=-0.75)
+    parser.add_argument('--imbalance', type=float, default=0.99)
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
@@ -74,11 +75,13 @@ d4 = ltn.Variable("digits4", range(10))
 ### Operators
 And = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
 Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=1))
-Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
 if not use_focal:
     Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Sum(), semantics="forall")
+    Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
+    Digit.__call__ = Digit.log
 else:
     Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
+    Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
@@ -103,8 +106,8 @@ def axioms(images_x1, images_x2, images_y1, images_y2, labels_z, alpha_exists):
         Exists(
             (d1, d2, d3, d4),
             And(
-                And(Digit.log([images_x1, d1]), Digit.log([images_x2, d2])),
-                And(Digit.log([images_y1, d3]), Digit.log([images_y2, d4]))
+                And(Digit([images_x1, d1]), Digit([images_x2, d2])),
+                And(Digit([images_y1, d3]), Digit([images_y2, d4]))
             ),
             mask=equals([labels_z, add([two_digit_number([d1, d2]), two_digit_number([d3, d4])])]),
             alpha=alpha_exists
