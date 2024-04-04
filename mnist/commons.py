@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+import tensorflow as tf
 from tqdm import tqdm
 
 
@@ -46,7 +46,8 @@ def train(
             metrics.reset_state()
 
         for batch_elements in tqdm(ds_train, desc="Train steps", leave=False):
-            train_step(*batch_elements, **scheduled_parameters[epoch])
+            with tf.device('/CPU:0'):
+                train_step(*batch_elements, **scheduled_parameters[epoch])
         for batch_elements in tqdm(ds_test, desc="Test steps", leave=False):
             test_step(*batch_elements, **scheduled_parameters[epoch])
 

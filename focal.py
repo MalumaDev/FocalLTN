@@ -3,10 +3,9 @@ import tensorflow as tf
 
 class FocalAggreg():
 
-    def __init__(self, gamma=2, stable=True, is_log=True, alpha=1):
+    def __init__(self, gamma=2, stable=True, is_log=True, ):
         # self.p = p
         self.stable = stable
-        self.alpha = alpha
         self.gamma = gamma
         self.is_log = is_log
 
@@ -53,5 +52,5 @@ class FocalAggreg():
             pt = xs
             xs = tf.math.log(xs)
 
-        return self.alpha * tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
-                                               keepdims=keepdims)
+        return tf.math.reduce_sum(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
+                                  keepdims=keepdims)

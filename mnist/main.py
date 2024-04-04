@@ -7,6 +7,7 @@ import tensorflow as tf
 
 import ltn
 import wandb
+from focal import FocalAggreg
 from mnist import commons
 from mnist.data import get_mnist_dataset
 from mnist.model import SingleDigit
@@ -32,6 +33,9 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
          val_batch_size):
     if seed == -1:
         seed = randint(0, 2 ** 32 - 1)
+
+    if use_focal:
+        a_type += "_focal"
     args = locals()
     tf.keras.utils.set_random_seed(seed)
     ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance, batch_size=batch_size,
@@ -52,9 +56,13 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
     And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
     Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
     Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-    Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value), semantics="forall")
 
-    formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value))
+    if not use_focal:
+        Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value), semantics="forall")
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value))
+    else:
+        Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=gamma, is_log=False), semantics="forall")
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Mean())
 
     def axioms(features, labels, training=False):
         axioms = []
@@ -75,15 +83,14 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
-    for features, labels in ds_test:
-        print("Initial sat level %.5f" % axioms(features, labels))
-        break
-
     def train_step(features, labels):
         # sat and update
         with tf.GradientTape() as tape:
             sat = axioms(features, labels, training=True)
-            loss = 1. - sat
+            if use_focal:
+                loss = - sat
+            else:
+                loss = 1. - sat
         gradients = tape.gradient(loss, Digit.trainable_variables)
         optimizer.apply_gradients(zip(gradients, Digit.trainable_variables))
         sat = axioms(features, labels) # compute sat without dropout
@@ -111,7 +118,7 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
 
     name = a_type
     if use_focal:
-        name += f"_focal{args['gamma']}"
+        name += f"{args['gamma']}"
     run = wandb.init(
         project="NeSy24-mnist",
         config=args,
