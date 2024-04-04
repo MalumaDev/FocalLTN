@@ -16,9 +16,9 @@ logging.basicConfig(level=logging.INFO)
 
 @click.command()
 @click.option("--seed", "-s", default=0, type=int, help="Seed")
-@click.option("--num_examples_per_class", "-n", default=1000, type=int,
+@click.option("--num_examples_per_class", "-n", default=600, type=int,
               help="Number of examples per class. All for maximum number of examples.")
-@click.option("--imbalance", "-i", default=-0.75, type=float)
+@click.option("--imbalance", "-i", default=0.75, type=float)
 @click.option("--p_value", "-p", default=2, type=int)
 @click.option("--epochs", "-e", default=10, type=int)
 @click.option("--lr", "-l", default=1e-3, type=float)
@@ -26,12 +26,16 @@ logging.basicConfig(level=logging.INFO)
 @click.option("--use_focal", is_flag=True)
 @click.option("--gamma", default=2, type=float)
 @click.option("--a_type", "-t", default="stable", type=str)
-def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path, use_focal, gamma, a_type):
+@click.option("--batch_size", "-b", default=64, type=int)
+@click.option("--val_batch_size", "-vb", default=256, type=int)
+def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path, use_focal, gamma, a_type, batch_size,
+         val_batch_size):
     if seed == -1:
         seed = randint(0, 2 ** 32 - 1)
     args = locals()
     tf.keras.utils.set_random_seed(seed)
-    ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance)
+    ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance, batch_size=batch_size,
+                                                        val_batch_size=val_batch_size)
     out_path = Path(out_path)
     if out_path.exists():
         print(f"File {out_path} already exists. Exiting.")
@@ -55,10 +59,14 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
     def axioms(features, labels, training=False):
         axioms = []
         for i, c in enumerate(classes):
+            if i not in labels:
+                continue
             c_x = ltn.Variable(f"x_{i}", features[labels == i])
             axioms.append(Forall(c_x, Digit([c_x, c], training=training)), )
 
         sat_level = formula_aggregator(axioms).tensor
+        # if tf.math.reduce_any(tf.math.is_nan(sat_level)):
+        #     raise ValueError("NaN detected")
         return sat_level
 
     for features, labels in ds_test:
@@ -78,11 +86,13 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
             loss = 1. - sat
         gradients = tape.gradient(loss, Digit.trainable_variables)
         optimizer.apply_gradients(zip(gradients, Digit.trainable_variables))
-        sat = axioms(features, labels)  # compute sat without dropout
+        sat = axioms(features, labels) # compute sat without dropout
+        if tf.math.reduce_any(tf.math.is_nan(sat)):
+            raise ValueError("NaN detected")
         metrics_dict['train_sat_kb'](sat)
         # accuracy
         predictions = logits_model([features])
-        metrics_dict['train_accuracy'](tf.one_hot(labels, 3), predictions)
+        metrics_dict['train_accuracy'](tf.one_hot(labels, 10), tf.nn.softmax(predictions))
 
     def test_step(features, labels):
         # sat
@@ -90,7 +100,7 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
         metrics_dict['test_sat_kb'](sat)
         # accuracy
         predictions = logits_model([features])
-        metrics_dict['test_accuracy'](tf.one_hot(labels, 3), predictions)
+        metrics_dict['test_accuracy'](tf.one_hot(labels, 10), tf.nn.softmax(predictions))
 
     metrics_dict = {
         'train_sat_kb': tf.keras.metrics.Mean(name='train_sat_kb'),

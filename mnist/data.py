@@ -15,6 +15,7 @@ def get_mnist_data_as_numpy():
 def get_mnist_dataset(
         count_train,
         batch_size=64,
+        val_batch_size=256,
         buffer_size=60000,
         op=lambda args: args[0] + args[1],
         imbalance=1.
@@ -50,6 +51,6 @@ def get_mnist_dataset(
 
     ds_train = tf.data.Dataset.from_tensor_slices((img_train, label_train)) \
         .shuffle(buffer_size).batch(batch_size)
-    ds_test = tf.data.Dataset.from_tensor_slices((img_test, label_test)).batch(batch_size)
+    ds_test = tf.data.Dataset.from_tensor_slices((img_test, label_test)).batch(val_batch_size)
 
     return ds_train, ds_test, np.unique(label_train, return_counts=True)
