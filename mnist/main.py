@@ -36,6 +36,7 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
 
     if use_focal:
         a_type += "_focal"
+
     args = locals()
     tf.keras.utils.set_random_seed(seed)
     ds_train, ds_test, distribution = get_mnist_dataset(num_examples_per_class, imbalance=imbalance, batch_size=batch_size,
