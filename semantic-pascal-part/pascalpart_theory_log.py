@@ -9,6 +9,7 @@ import tensorflow as tf
 import numpy as np
 
 import data_processing
+from focal import FocalAggreg
 from pascalpart_domains import PascalPartDomains
 
 
@@ -32,6 +33,8 @@ def get_theory(
         operator_config = get_loglse_operator_config()
     elif op_config == "log_ltn_max":
         operator_config = get_logmax_operator_config()
+    elif op_config == "focal_log_ltn":
+        operator_config = get_log_operator_config(is_focal=True)
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
 
@@ -89,13 +92,16 @@ def get_logmax_operator_config() -> ltnw.OperatorConfig:
         exists=exists, forall=forall, and_aggreg=and_aggreg, or_aggreg=or_aggreg)
     return op_config
 
-def get_log_operator_config() -> ltnw.OperatorConfig:
+def get_log_operator_config(is_focal=False) -> ltnw.OperatorConfig:
     alpha = config["a_existential_quantifier"]
     not_ = None
     and_ = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
     or_ = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogMeanExp(alpha=alpha))
     implies = None
-    forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(),semantics="forall")
+    if is_focal:
+        forall = ltn.log.Wrapper_Quantifier(FocalAggreg(), semantics="forall")
+    else:
+        forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(),semantics="forall")
     and_aggreg = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Mean())
     exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogMeanExp(alpha=alpha), semantics="exists")
     or_aggreg = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_LogMeanExp(alpha=alpha))

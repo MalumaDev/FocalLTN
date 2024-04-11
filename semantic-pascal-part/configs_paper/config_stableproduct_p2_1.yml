@@ -59,7 +59,7 @@ types_hidden_layer_sizes : [512,256,256,128,128]
 ##############
 # LTN CONFIG #
 ##############
-# Configuration to use. Options: 'stable_rl', 'prod_rl', 'log_ltn', 'log_ltn_sum', 'log_ltn_lse', 'log_ltn_max'
+# Configuration to use. Options: 'stable_rl', 'prod_rl', 'log_ltn', 'log_ltn_sum', 'log_ltn_lse', 'log_ltn_max', "focal_ltn"
 ltn_config : "stable_rl"
 
 ## STABLE PRODUCT CONFIG ##

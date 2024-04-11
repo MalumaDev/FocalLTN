@@ -31,7 +31,6 @@ def get_theory(
         operator_config = get_prod_rl_operator_config()
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
     elif op_config == "focal_ltn":
-        #raise NotImplementedError("Focal LTN is not implemented yet.") # TODO: Implement focal LTN
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
         operator_config = get_stable_rl_operator_config(is_focal=True)
     grounding = get_grounding(class_to_id)
@@ -71,10 +70,8 @@ def get_stable_rl_operator_config(is_focal=False) -> ltnw.OperatorConfig:
     implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
     exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=p_exists), semantics="exists")
     if not is_focal:
-
         forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
     else:
-
         forall = ltn.Wrapper_Quantifier(focal.FocalAggreg(is_log=False),semantics="forall")
     and_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Prod())
     or_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMean(p=p_exists))
