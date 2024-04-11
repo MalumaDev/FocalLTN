@@ -1,6 +1,7 @@
 import yaml
 from dataclasses import dataclass, field
 
+import focal
 import ltn
 import ltn.wrapper as ltnw
 import ltn.utils as ltnu
@@ -31,8 +32,8 @@ def get_theory(
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
     elif op_config == "focal_ltn":
         #raise NotImplementedError("Focal LTN is not implemented yet.") # TODO: Implement focal LTN
-        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.FocalAggreg())
-        operator_config = get_stable_rl_operator_config()
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
+        operator_config = get_stable_rl_operator_config(is_focal=True)
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
     
@@ -61,7 +62,7 @@ def get_prod_rl_operator_config() -> ltnw.OperatorConfig:
         set_exist_schedule(op_config)
     return op_config
 
-def get_stable_rl_operator_config() -> ltnw.OperatorConfig:
+def get_stable_rl_operator_config(is_focal=False) -> ltnw.OperatorConfig:
     p_forall = config["p_universal_quantifier"]
     p_exists = config["p_existential_quantifier"]
     not_ = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
@@ -69,7 +70,12 @@ def get_stable_rl_operator_config() -> ltnw.OperatorConfig:
     or_ = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
     implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
     exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=p_exists), semantics="exists")
-    forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall),semantics="forall")
+    if not is_focal:
+
+        forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
+    else:
+
+        forall = ltn.Wrapper_Quantifier(focal.FocalAggreg(is_log=False),semantics="forall")
     and_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Prod())
     or_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMean(p=p_exists))
     op_config = ltnw.OperatorConfig(not_=not_, and_=and_, or_=or_, implies=implies, 
