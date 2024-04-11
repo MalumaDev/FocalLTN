@@ -30,7 +30,9 @@ def get_theory(
         operator_config = get_prod_rl_operator_config()
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
     elif op_config == "focal_ltn":
-        raise NotImplementedError("Focal LTN is not implemented yet.") # TODO: Implement focal LTN
+        #raise NotImplementedError("Focal LTN is not implemented yet.") # TODO: Implement focal LTN
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.FocalAggreg())
+        operator_config = get_stable_rl_operator_config()
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
     

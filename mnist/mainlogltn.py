@@ -7,6 +7,7 @@ import tensorflow as tf
 
 import ltn
 import wandb
+from focal import FocalAggreg
 from mnist import commons
 from mnist.data import get_mnist_dataset
 from mnist.model import SingleDigit
@@ -52,9 +53,13 @@ def main(seed, num_examples_per_class, imbalance, p_value, epochs, lr, out_path,
     And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
     Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
     Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-    Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(), semantics="forall")
 
-    formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Mean())
+    if not use_focal:
+        Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value), semantics="forall")
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_value))
+    else:
+        Forall = ltn.Wrapper_Quantifier(FocalAggreg(gamma=gamma, is_log=True), semantics="forall")
+        formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Mean())
 
     def axioms(features, labels, training=False):
         axioms = []

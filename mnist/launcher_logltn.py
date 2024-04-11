@@ -9,8 +9,8 @@ for n_examples in [600]:
                 # Stable Product p=2
                 imbalance = j*k
                 os.system(
-                    f"python mainlogltn.py --out_path results/{n_examples}/logltn_{imbalance}_{seed}.csv"
-                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance} -t logltn")
+                    f"python mainlogltn.py --out_path results/{n_examples}/logltnfocal_{imbalance}_{seed}.csv"
+                    f" -n {n_examples} -p 2 --seed {seed} --imbalance {imbalance} --use_focal")
 
 
 
