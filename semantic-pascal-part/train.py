@@ -80,9 +80,6 @@ def train(
         theory.reset_metrics()
         evaluation.test_step(theory, test_datasets=test_datasets, loggers=test_loggers,
                              step=theory.step)
-        for logger in test_loggers:
-            if hasattr(logger, "commit"):
-                logger.commit()
 
 
 if __name__ == "__main__":
@@ -105,9 +102,16 @@ if __name__ == "__main__":
     df_logger_train = ltnu.logging.DataFrameLogger()
     df_logger_test = ltnu.logging.DataFrameLogger()
 
-    name = f"{config['ltn_config']}_{config['random_seed']}"
+    name = f"{config['ltn_config']}"
+    if config["ltn_config"] == "stable_rl":
+        name += f"_{config['p_universal_quantifier']}"
+
+    config["group_name"] = name
+
+    name += f"_{config['random_seed']}"
+
     run = wandb.init(
-        project="NeSy24PascalPart",
+        project=f"NeSy24PascalPart_{config['data_category'].upper()}",
         config=config,
         name=name,
         entity="grains-polito"

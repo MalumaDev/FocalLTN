@@ -2,6 +2,7 @@
 from __future__ import annotations
 import dataclasses
 import tensorflow as tf
+from wandb.integration.keras import WandbMetricsLogger
 
 import ltn
 from ltn.wrapper.constraints import Constraint
@@ -52,9 +53,17 @@ class Theory:
         self.step += 1
 
     def log_metrics(self) -> None:
+        wandb_loggers = []
         for metric in self.all_metrics:
             for logger in self.metrics_loggers:
+                if isinstance(logger, WandbMetricsLogger):
+                    wandb_loggers.append(logger)
+                    logger.log_value(f"train/{metric.name}", float(metric.result()))
                 logger.log_value(metric.name, float(metric.result()), step=self.step)
+
+        for logger in wandb_loggers:
+            if hasattr(logger, "commit"):
+                logger.commit()
 
     def reset_metrics(self) -> None:
         for metric in self.all_metrics:

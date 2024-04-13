@@ -36,13 +36,13 @@ epochs_of_pretraining: 1
 bounding_box_minimal_size : 6
 
 # Which types of the data to use. The IJCAI2017 paper is written using indoor. Options: 'all', 'indoor', 'vehicle', 'animal'
-data_category : "all"
+data_category : "indoor"
 
 # The ratio of the split between labeled and unlabeled training picture data.
 labeled_ratio : 0.05
 
 # Used to choose the split of the data
-random_seed : 1300
+random_seed: 2
 
 # Options: 'float32', 'float64'
 float_dtype : "float32"
@@ -59,7 +59,7 @@ types_hidden_layer_sizes : [512,256,256,128,128]
 ##############
 # LTN CONFIG #
 ##############
-# Configuration to use. Options: 'stable_rl', 'prod_rl', 'log_ltn', 'log_ltn_sum', 'log_ltn_lse', 'log_ltn_max'
+# Configuration to use. Options: 'stable_rl', 'prod_rl', 'log_ltn', 'log_ltn_sum', 'log_ltn_lse', 'log_ltn_max', "focal_ltn", 'focal_log_ltn'
 ltn_config : "focal_log_ltn"
 
 ## STABLE PRODUCT CONFIG ##

@@ -60,7 +60,7 @@ types_hidden_layer_sizes : [512,256,256,128,128]
 # LTN CONFIG #
 ##############
 # Configuration to use. Options: 'stable_rl', 'prod_rl', 'log_ltn', 'log_ltn_sum', 'log_ltn_lse', 'log_ltn_max'
-ltn_config : "focal_log_ltn"
+ltn_config : "focal_ltn"
 
 ## STABLE PRODUCT CONFIG ##
 # Schedule the parameter p of the existential quantifier. Options: 'None', 'linear', 'square', 'exponential'
