@@ -1,9 +1,12 @@
+import multiprocessing
 import os
 import csv
 import collections
 import logging
 import dataclasses
+import time
 import zipfile
+from functools import partial
 
 import tqdm
 
@@ -13,6 +16,12 @@ import h5py
 
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
+
+if not hasattr(config, "workers"):
+    config["workers"] = 12
+
+if not hasattr(config, "chunk_size"):
+    config["chunk_size"] = 100
 
 DATA_FOLDER = "data"
 
@@ -129,7 +138,7 @@ class BoxData:
     pic: int
     _position: np.ndarray = None
     _roi_features: np.ndarray = None
-    h5_file: h5py.File = None
+    h5_file: str = None
     type_str: str = None
 
     def __post_init__(self):
@@ -144,11 +153,20 @@ class BoxData:
 
     @property
     def roi_features(self) -> np.ndarray:
-        return self.h5_file[str(self.id_)]["roi_features"][()] if self._roi_features is None else self._roi_features
+        if self._roi_features is None:
+            with open(self.h5_file, 'r') as f:
+                tmp = f[str(self.id_)]["roi_features"][()]
+            return tmp
+
+        return self._roi_features
 
     @property
     def position(self) -> np.ndarray:
-        return self.h5_file[str(self.id_)]["position"][()] if self._position is None else self._position
+        if self._position is None:
+            with open(self.h5_file, 'r') as f:
+                tmp = f[str(self.id_)]["position"][()]
+            return tmp
+        return self._position
 
     @property
     def features(self) -> np.ndarray:
@@ -173,6 +191,41 @@ class PairedData:
         self.ispartof = bool(self.ispartof)
 
 
+def is_big_enough(coords, min_bb_size):
+    return np.all((coords[2:4] - coords[:2]) >= min_bb_size)
+
+
+def compute_data(filename, select_classes, min_bb_size, class_to_id, roi_features_in_memory, box_ids):
+    if not isinstance(box_ids, list):
+        box_ids = list(box_ids)
+    with h5py.File(filename, 'r') as f:
+        res = []
+        for box_id in box_ids:
+            type_str = f[box_id].attrs["type"]
+            if type_str not in select_classes:
+                continue
+            type_id = class_to_id[type_str]
+            position = f[box_id]["position"][()]
+            if not is_big_enough(position, min_bb_size):
+                continue
+            roi_features = f[box_id]["roi_features"][()] if roi_features_in_memory else None
+            res.append(BoxData(id_=box_id,
+                               type_=type_id,
+                               pic=f[box_id].attrs["pic"],
+                               partof_id=f[box_id].attrs["partof"],
+                               _roi_features=roi_features,
+                               _position=position,
+                               h5_file=filename,
+                               type_str=type_str))
+    return res
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i: min(i + n, len(lst))]
+
+
 def get_box_data(
         training: bool = True,
         min_bb_size: int = config["bounding_box_minimal_size"],
@@ -181,35 +234,47 @@ def get_box_data(
 ) -> list[BoxData]:
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
     if not os.path.exists(data_dir):
-        with zipfile.ZipFile(os.path.join(DATA_FOLDER, "data.zip"), 'r') as zip_ref:
-            zip_ref.extractall(DATA_FOLDER)
-    f = h5py.File(os.path.join(data_dir, "box_features.hdf5"))
+        raise FileNotFoundError(f"Directory {data_dir} does not exist.")
+    hdf5_file = os.path.join(data_dir, "box_features.hdf5")
+    f = h5py.File(hdf5_file)
     all_box_ids = list(f.keys())
     logging.info(f"{len(all_box_ids)} bounding boxes found.")
     class_to_id = get_classes_to_id()
     select_classes = set(class_to_id.keys())
     select_box_data: list[BoxData] = []
-    for box_id in tqdm.tqdm(all_box_ids, desc="Reading box ids"):
-        type_str = f[box_id].attrs["type"]
-        if type_str not in select_classes:
-            continue
-        type_id = class_to_id[type_str]
-        position = f[box_id]["position"][()]
-        is_big_enough = lambda coords: np.all((coords[2:4] - coords[:2]) >= min_bb_size)
-        if not is_big_enough(position):
-            continue
-        roi_features = f[box_id]["roi_features"][()] if roi_features_in_memory else None
-        select_box_data.append(
-            BoxData(id_=box_id,
-                    type_=type_id,
-                    pic=f[box_id].attrs["pic"],
-                    partof_id=f[box_id].attrs["partof"],
-                    _roi_features=roi_features,
-                    _position=position,
-                    h5_file=f,
-                    type_str=type_str))
+    # is_big_enough = lambda coords: np.all((coords[2:4] - coords[:2]) >= min_bb_size)
+    # f.close()
+    with multiprocessing.Pool(config["workers"]) as pool:
+        tmp = pool.map(
+            partial(compute_data, hdf5_file, select_classes, min_bb_size,
+                    class_to_id, roi_features_in_memory), list(chunks(all_box_ids, config["chunk_size"])))
+        for x in tmp:
+            select_box_data.extend(x)
     logging.info(f"Using only {len(select_box_data)} bounding boxes (others have types not in the "
                  "experiment category or their sizes are too small).")
+    # select_box_data = []
+    #
+    # for box_id in tqdm.tqdm(all_box_ids, desc="Reading box ids"):
+    #     type_str = f[box_id].attrs["type"]
+    #     if type_str not in select_classes:
+    #         continue
+    #     type_id = class_to_id[type_str]
+    #     position = f[box_id]["position"][()]
+    #     if not is_big_enough(position):
+    #         continue
+    #     roi_features = f[box_id]["roi_features"][()] if roi_features_in_memory else None
+    #     select_box_data.append(
+    #         BoxData(id_=box_id,
+    #                 type_=type_id,
+    #                 pic=f[box_id].attrs["pic"],
+    #                 partof_id=f[box_id].attrs["partof"],
+    #                 _roi_features=roi_features,
+    #                 _position=position,
+    #                 h5_file=hdf5_file,
+    #                 type_str=type_str))
+    # logging.info(f"Using only {len(select_box_data)} bounding boxes (others have types not in the "
+    #              "experiment category or their sizes are too small).")
+    f.close()
     if print_type_metrics:
         log_type_metrics(select_box_data)
     return select_box_data
@@ -273,22 +338,49 @@ def log_type_metrics(box_data: list[BoxData]) -> None:
         logging.info(f"Type {type_id_to_classes[type_id]}: {frequency} occurrences.")
 
 
+def compute_paired_data(filename, all_box_ids, select_box_ids):
+    if not isinstance(select_box_ids, list):
+        select_box_ids = list(select_box_ids)
+    tmp = []
+    with h5py.File(filename, 'r') as f:
+        for box1_id in select_box_ids:
+            box1_node = f[str(box1_id)]
+            for box2_id in box1_node.keys():
+                if int(box2_id) not in all_box_ids:
+                    continue
+                tmp.append(PairedData(box1_id, box2_id, box1_node[box2_id].attrs["ispartof"]))
+
+    return tmp
+
+
 def get_paired_data(
         box_data: list[BoxData],
         training: bool = True,
         print_partof_metrics: bool = False
 ) -> list[PairedData]:
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
-    f = h5py.File(os.path.join(data_dir, "pairs_partof.hdf5"))
-    select_ids = set([box.id_ for box in box_data])
-    paired_data: list[PairedData] = []
-    for box1_id in tqdm.tqdm(select_ids, desc="Processing pairs"):
-        box1_node = f[str(box1_id)]
-        for box2_id in box1_node.keys():
-            if int(box2_id) not in select_ids:
-                continue
-            paired_data.append(PairedData(box1_id, box2_id, box1_node[box2_id].attrs["ispartof"]))
+    h5file = os.path.join(data_dir, "pairs_partof.hdf5")
+    all_box_ids = set([box.id_ for box in box_data])
+    with multiprocessing.Pool(config["workers"]) as pool:
+        paired_data: list[PairedData] = []
+        # start = time.time()
+        tmp = pool.map(
+            partial(compute_paired_data, h5file, all_box_ids), list(chunks(list(all_box_ids), config["chunk_size"])))
+        for x in tmp:
+            paired_data.extend(x)
+        # logging.info(f"Time used: {time.time() - start}")
+
     logging.info(f"Using {len(paired_data)} pairs of bounding boxes.")
+    # with h5py.File(h5file, 'r') as f:
+    #     select_ids = set([box.id_ for box in box_data])
+    #     paired_data2: list[PairedData] = []
+    #     for box1_id in tqdm.tqdm(select_ids, desc="Processing pairs"):
+    #         box1_node = f[str(box1_id)]
+    #         for box2_id in box1_node.keys():
+    #             if int(box2_id) not in select_ids:
+    #                 continue
+    #             paired_data2.append(PairedData(box1_id, box2_id, box1_node[box2_id].attrs["ispartof"]))
+    # logging.info(f"Using {len(paired_data2)} pairs of bounding boxes.")
     if print_partof_metrics:
         id_to_box = {box.id_: box for box in box_data}
         log_partof_metrics(id_to_box, paired_data)
@@ -313,7 +405,7 @@ def log_partof_metrics(id_to_box: dict[str, BoxData], paired_data: list[PairedDa
 
 def containment_ratio_of_bb1_in_bb2(bb1: np.ndarray, bb2: np.ndarray, batch_mode: bool) -> float:
     """Containment ratio of bb1 in bb2.
-    
+
     Args:
         bb1 (np.ndarray): features of bb1 (`BoxData.features`)
         bb2 (np.ndarray): features of bb2 (`BoxData.features`)

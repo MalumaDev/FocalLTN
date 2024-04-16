@@ -1,7 +1,14 @@
 import datetime
 import logging
 import random
+import sys
 from typing import Any
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 
 import wandb
 from tqdm import tqdm
@@ -18,8 +25,7 @@ import evaluation
 
 logging.getLogger().setLevel(logging.INFO)
 
-with open("config.yml", "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+
 
 DomGroup = tuple[str]
 DomLabel = str
@@ -61,9 +67,10 @@ def train(
         theory: ltnw.Theory,
         test_datasets: evaluation.TestDatasets,
         test_loggers: list[ltnu.logging.MetricsLogger],
-        epoch_range: tuple[int, int] = (0, config["epochs"]),
+        epoch_range: tuple[int, int] = None,
         pretraining: bool = False, logger=None
 ):
+    epoch_range = epoch_range if epoch_range is not None else (0, config["epochs"])
     constraints = theory.constraints if not pretraining else [cstr for cstr in theory.constraints
                                                               if cstr.label.endswith("groundtruth")]
     print(f"{len(constraints)} constraints:")
@@ -83,9 +90,47 @@ def train(
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
+    else:
+        config_path = "config.yml"
+    with open(config_path, "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
     if "random_seed" not in config:
         config["random_seed"] = random.randint(0, 2 ** 32 - 1)
-    tf.keras.utils.set_random_seed(config["random_seed"])
+
+    if not hasattr(config, "workers"):
+        config["workers"] = 12
+
+    if not hasattr(config, "chunk_size"):
+        config["chunk_size"] = 100
+
+
+
+    pascalpart_domains.config = config
+    pascalpart_theory.config = config
+    pascalpart_theory_log.config = config
+    evaluation.config = config
+    data_processing.config = config
+
+    # check if run already exists
+    name = f"{config['ltn_config']}"
+    if config["ltn_config"] == "stable_rl":
+        name += f"_{config['p_universal_quantifier']}"
+    elif hasattr(config, "gamma"):
+        name += f"_{config['gamma']}"
+
+    config["group_name"] = name
+
+    name += f"_{config['random_seed']}"
+
+    runs = wandb.Api().runs(f"grains-polito/NeSy24PascalPart_{config['data_category'].upper()}")
+    for run in runs:
+        if run.name == name:
+            logging.info(f"Run {name} already exists.")
+            sys.exit()
+
+    keras.utils.set_random_seed(config["random_seed"])
     logging.info("Loading training data.")
     pascal_data = pascalpart_domains.get_pascalpart_data()
     pascal_doms = pascalpart_domains.data_to_domains(pascal_data)
@@ -102,13 +147,6 @@ if __name__ == "__main__":
     df_logger_train = ltnu.logging.DataFrameLogger()
     df_logger_test = ltnu.logging.DataFrameLogger()
 
-    name = f"{config['ltn_config']}"
-    if config["ltn_config"] == "stable_rl":
-        name += f"_{config['p_universal_quantifier']}"
-
-    config["group_name"] = name
-
-    name += f"_{config['random_seed']}"
 
     run = wandb.init(
         project=f"NeSy24PascalPart_{config['data_category'].upper()}",

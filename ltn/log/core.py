@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional, Union, List, Callable, Any
 
+import keras
 import tensorflow as tf
 
 from ltn import core
@@ -90,18 +91,19 @@ class _LogSigmoidTfModel(tf.keras.Model):
         """
         super().__init__()
         self.logits_model = logits_model
+        self.activation = keras.layers.Lambda(lambda x: tf.math.log(keras.activations.sigmoid(x)))
         self.call = self._call_with_class_indexing if with_class_indexing else self._call_without_class_indexing
 
     def _call_without_class_indexing(self, inputs: List[tf.Tensor], *args: Any, **kwargs: Any) -> tf.Tensor:
         logit = self.logits_model(inputs)
-        log_truth_degree = tf.math.log_sigmoid(logit)    
+        log_truth_degree = self.activation (logit)
         return log_truth_degree
 
     def _call_with_class_indexing(self, inputs: List[tf.Tensor], *args: Any, **kwargs: Any) -> tf.Tensor:
         """ inputs[-1] are the classes to index """
         logits_model_inputs, indices = inputs[:-1], inputs[-1]
         logits = self.logits_model(logits_model_inputs)
-        log_truth_degrees = tf.math.log_sigmoid(logits)
+        log_truth_degrees = self.activation(logits)
         indices = tf.cast(indices, tf.int32)
         return tf.gather_nd(log_truth_degrees, indices, batch_dims=1)
 
@@ -113,18 +115,19 @@ class _NlogSigmoidTfModel(tf.keras.Model):
         """
         super().__init__()
         self.logits_model = logits_model
+        self.activation = keras.layers.Lambda(lambda x: tf.math.log(keras.activations.sigmoid(x)))
         self.call = self._call_with_class_indexing if with_class_indexing else self._call_without_class_indexing
         
     def _call_without_class_indexing(self, inputs: List[tf.Tensor], *args: Any, **kwargs: Any) -> tf.Tensor:
         logit = self.logits_model(inputs)
-        log_truth_degree = tf.math.log_sigmoid(logit) - logit
+        log_truth_degree = self.activation(logit) - logit
         return log_truth_degree
 
     def _call_with_class_indexing(self, inputs: List[tf.Tensor], *args: Any, **kwargs: Any) -> tf.Tensor:
         """ inputs[-1] are the classes to index """
         logits_model_inputs, indices = inputs[:-1], inputs[-1]
         logits = self.logits_model(logits_model_inputs)
-        log_truth_degrees = tf.math.log_sigmoid(logits) - logits
+        log_truth_degrees = self.activation(logits) - logits
         indices = tf.cast(indices, tf.int32)
         return tf.gather_nd(log_truth_degrees, indices, batch_dims=1)
 

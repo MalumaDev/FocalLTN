@@ -14,7 +14,7 @@ training_steps_per_epoch : 100
 ##################
 minibatch_size : 32
 shuffle_buffer_size : 10000
-test_minibatch_size : 256
+test_minibatch_size : 2048
 
 ################
 # PRIOR CONFIG #

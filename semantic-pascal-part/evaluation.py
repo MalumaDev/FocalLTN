@@ -14,9 +14,7 @@ import ltn.wrapper as ltnw
 import ltn.utils as ltnu
 import data_processing
 
-with open("config.yml", "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
-
+config = {}
 
 @dataclass
 class TestData:
@@ -38,6 +36,11 @@ class TestDatasets:
     data: TestData
 
 
+def map_test(x1, x2, y, keys, data):
+    # print((int(x1.ref().numpy()), x2, y))
+    return x1, x2, y, data[x1 == keys][0], data[x2 == keys][0]
+
+
 def get_test_datasets() -> TestDatasets:
     logging.info(f"----TEST DATA----")
     box_all = data_processing.get_box_data(training=False, print_type_metrics=True)
@@ -53,13 +56,20 @@ def get_test_datasets() -> TestDatasets:
     x = [box.id_ for box in box_all]
     types = [box.type_ for box in box_all]
     ds_x_and_types = tf.data.Dataset.from_tensor_slices((x, types)) \
-        .batch(config["test_minibatch_size"])
+        .batch(config["test_minibatch_size"]).prefetch(tf.data.AUTOTUNE)
 
     x1 = [pair.id1 for pair in pairs_all]
     x2 = [pair.id2 for pair in pairs_all]
     ispartof = [pair.ispartof for pair in pairs_all]
-    ds_x1x2_and_ispartof = tf.data.Dataset.from_tensor_slices((x1, x2, ispartof)) \
-        .batch(config["test_minibatch_size"])
+    features = {key: box.features for key, box in id_to_box.items()}
+    keys, features = list(zip(*features.items()))
+    ds_x1x2_and_ispartof = tf.data.Dataset.from_tensor_slices((x1, x2, ispartof)).map(
+        lambda x1, x2, y: tf.numpy_function(func=map_test,
+                                            inp=[x1, x2, y, np.array(keys), np.array(features)],
+                                            Tout=[tf.int32, tf.int32, tf.bool, tf.float32, tf.float32]),
+        num_parallel_calls=tf.data.AUTOTUNE,
+        deterministic=True).batch(
+        config["test_minibatch_size"]).prefetch(tf.data.AUTOTUNE)
     return TestDatasets(ds_x_and_types=ds_x_and_types, ds_x1x2_and_ispartof=ds_x1x2_and_ispartof,
                         map_fn_id_to_features=id_to_features_fn, data=data)
 
@@ -86,10 +96,11 @@ def evaluate_partof_and_reasoning(
     classification_threshold = 0.5
     types_count_false_neg = defaultdict(lambda: 0)
     types_count_false_pos = defaultdict(lambda: 0)
-    for x1, x2, y_true in tqdm(datasets.ds_x1x2_and_ispartof, desc="Computing PartOf(x1,x2) for test data"):
-        x1_features = tf.stack([datasets.map_fn_id_to_features(x1i) for x1i in x1])
-        x2_features = tf.stack([datasets.map_fn_id_to_features(x2i) for x2i in x2])
-        y_score = tf.squeeze(theory.grounding.predicates["partOf"].model([x1_features, x2_features]))
+    for x1, x2, y_true, x1_features, x2_features in tqdm(datasets.ds_x1x2_and_ispartof,
+                                                         desc="Computing PartOf(x1,x2) for test data"):
+        # x1_features = tf.stack([datasets.map_fn_id_to_features(x1i) for x1i in x1])
+        # x2_features = tf.stack([datasets.map_fn_id_to_features(x2i) for x2i in x2])
+        y_score = tf.squeeze(theory.grounding.predicates["partOf"].model([x1_features, x1_features]))
         all_y_score.append(y_score)
         all_y_true.append(y_true)
         # analyze types mispredicted

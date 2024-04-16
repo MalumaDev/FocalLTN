@@ -13,11 +13,12 @@ class Domain:
     Also wraps the domain with a `tf.data.Dataset` instance so that constraints can sample 
     minibatches during training.
     """
-    def __init__(self, 
-            label: str, 
-            values: np.ndarray,
-            dataset_params: DatasetParams = None
-    ) -> None:
+
+    def __init__(self,
+                 label: str,
+                 values: np.ndarray,
+                 dataset_params: DatasetParams = None
+                 ) -> None:
         self.label = label
         self.values = values if isinstance(values, np.ndarray) else np.array(values, dtype=np.float32)
         self.dataset_params = dataset_params if dataset_params is not None else DatasetParams()
@@ -30,7 +31,7 @@ class Domain:
         self._diag_dataset_iterator: DatasetIterator = None
 
         self.set_dataset_params(dataset_params)
-        
+
     def random_choice_indices(self, size: int, replace: bool) -> np.ndarray:
         return np.random.choice(len(self.values), size=size, replace=replace)
 
@@ -40,12 +41,12 @@ class Domain:
             values = np.array([self.dataset_params.map_fn(vi) for vi in values])
         return values
 
-    def get_values_at_indices(self, indices: np.ndarray, use_map: bool=True) -> np.ndarray:
+    def get_values_at_indices(self, indices: np.ndarray, use_map: bool = True) -> np.ndarray:
         values = tf.gather(self.values, indices, axis=0).numpy()
         if use_map and self.dataset_params.map_fn is not None:
             values = np.array([self.dataset_params.map_fn(vi) for vi in values])
         return values
-    
+
     def set_dataset_params(self, dataset_params: DatasetParams) -> None:
         """In place"""
         if self.is_diagged:
@@ -53,9 +54,9 @@ class Domain:
         self.dataset_params = dataset_params
         self._dataset = dataset_params.apply_to_dataset(self._raw_dataset)
         self._dataset_iterator = DatasetIterator(self._dataset)
-        
+
     def _set_diag_dataset(self, diag_dataset: tf.data.Dataset, index_in_diag_dataset: int,
-            iterator: DatasetIterator) -> None:
+                          iterator: DatasetIterator) -> None:
         self._diag_dataset = diag_dataset
         self._index_in_diag_dataset = index_in_diag_dataset
         self._diag_dataset_iterator = iterator
@@ -80,7 +81,7 @@ class Domain:
     @property
     def is_diagged(self) -> bool:
         return self._diag_dataset is not None
-    
+
 
 @dataclasses.dataclass
 class DatasetParams:
@@ -96,8 +97,8 @@ class DatasetParams:
             raise ValueError("Precise the `shuffle_buffer_size` if using shuffling.")
 
     def fit(self, other: DatasetParams) -> bool:
-        return (self.shuffle == other.shuffle and 
-                self.minibatch_size == other.minibatch_size and 
+        return (self.shuffle == other.shuffle and
+                self.minibatch_size == other.minibatch_size and
                 self.drop_remainder == other.drop_remainder and
                 self.repeat == other.repeat and
                 self.shuffle_buffer_size == other.shuffle_buffer_size)
@@ -107,8 +108,8 @@ class DatasetParams:
         if self.shuffle:
             dataset = dataset.shuffle(self.shuffle_buffer_size)
         if self.map_fn is not None:
-            dataset=dataset.map(self.map_fn)
-        dataset = dataset.batch(self.minibatch_size, drop_remainder=self.drop_remainder)
+            dataset = dataset.map(self.map_fn)
+        dataset = dataset.batch(self.minibatch_size, drop_remainder=self.drop_remainder).prefetch(tf.data.AUTOTUNE)
         if self.repeat:
             dataset = dataset.repeat()
         return dataset
@@ -120,6 +121,7 @@ class DatasetIterator:
     iterator: tf.data.Iterator = None
     _current_minibatch: tf.Tensor | list[tf.Tensor] = None
     _has_used_current_minibatch: bool = False
+
     def __post_init__(self):
         self.iterator = iter(self.dataset)
         self._current_minibatch = next(self.iterator)
@@ -128,12 +130,12 @@ class DatasetIterator:
     def current_minibatch(self) -> tf.Tensor:
         self._has_used_current_minibatch = True
         return self._current_minibatch
-    
+
     def set_next_minibatch(self) -> None:
         if not self._has_used_current_minibatch:
             warnings.warn("Setting the next batch in the dataset iterator, even though the "
-                    "previous batch has not been used yet. Make sure you are not updating the "
-                    "same dataset iterator from several endpoints (e.g. via diag datasets).")
+                          "previous batch has not been used yet. Make sure you are not updating the "
+                          "same dataset iterator from several endpoints (e.g. via diag datasets).")
         self._current_minibatch = next(self.iterator)
         self._has_used_current_minibatch = False
 
@@ -141,7 +143,7 @@ class DatasetIterator:
 def diag_dataset_params(ds_params_list: list[DatasetParams]) -> DatasetParams:
     if not all(ds_params_list[0].fit(ds_params) for ds_params in ds_params_list):
         raise ValueError("Some domains have not matching values in `dataset_params`. It is not " +
-            "possible to diag them without assigning a new set of parameters.")
+                         "possible to diag them without assigning a new set of parameters.")
     if all(ds_params.map_fn is None for ds_params in ds_params_list):
         diag_map_fn = None
     else:
@@ -162,7 +164,7 @@ def diag_domains(domains: list[Domain], dataset_params: DatasetParams = None) ->
             raise ValueError(f"Domain {dom.label} is already diagged. Undiag it first.")
     if dataset_params is None:
         dataset_params = diag_dataset_params([dom.dataset_params for dom in domains])
-    diag_label = "diag_"+"_".join([dom.label for dom in domains])
+    diag_label = "diag_" + "_".join([dom.label for dom in domains])
     for dom in domains:
         dom._diag_label = diag_label
     raw_diag_dataset = tf.data.Dataset.zip(tuple(dom._raw_dataset for dom in domains))
@@ -176,5 +178,3 @@ def undiag_domains(domains: list[Domain]) -> None:
     """In place"""
     for dom in domains:
         dom.undiag()
-
-
