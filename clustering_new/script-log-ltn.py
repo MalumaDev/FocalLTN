@@ -32,20 +32,17 @@ class MLP(tf.keras.Model):
 
 
 logits_model = MLP(nr_of_clusters)
-C = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
+C = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax", with_class_indexing=True)
 cluster = ltn.Variable("cluster", range(nr_of_clusters))
 
 x = ltn.Variable("x", features)
 y = ltn.Variable("y", features)
 
-Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
-And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
-Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
-Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-Equiv = ltn.Wrapper_Connective(ltn.fuzzy_ops.Equiv(ltn.fuzzy_ops.And_Prod(), ltn.fuzzy_ops.Implies_Reichenbach()))
-Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_LogProd(), semantics="forall")
-Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=6), semantics="exists")
-formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Mean())
+And = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
+Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=5))
+Forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(), semantics="forall")
+Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=5), semantics="exists")
+formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
 
 eucl_dist = ltn.Function.Lambda(lambda inputs: tf.expand_dims(tf.norm(inputs[0] - inputs[1], axis=1), axis=1))
 is_greater_than = ltn.Predicate.Lambda(lambda inputs: inputs[0] > inputs[1])
@@ -53,40 +50,42 @@ close_thr = ltn.Constant(close_threshold, trainable=False)
 
 
 # CONSTRAINTS
-def axioms(p_exists):
+def axioms(alpha_exists):
     axioms = [
-        Forall(x, Exists(cluster, C([x, cluster]), p=p_exists)),
-        Forall(cluster, Exists(x, C([x, cluster]), p=p_exists)),
-        Forall([cluster, x, y], Implies(C([x, cluster]), C([y, cluster])),
-               mask=is_greater_than([close_thr, eucl_dist([x, y])]))
+        Forall(x, Exists(cluster, C.log([x, cluster]), alpha=alpha_exists)),
+        Forall(cluster, Exists(x, C.log([x, cluster]), alpha=alpha_exists)),
+        Forall([cluster, x, y],
+               Or(C.nlog([x, cluster]), C.log([y, cluster]), alpha=alpha_exists),
+               mask=is_greater_than([close_thr, eucl_dist([x, y])])),
     ]
 
     sat_level = formula_aggregator(axioms).tensor
     return sat_level
 
 
-axioms(p_exists=6)  # first call to build the graph
+axioms(alpha_exists=5)  # first call to build the graph
 
 # TRAINING
+
 trainable_variables = logits_model.trainable_variables
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.002)
 
 epochs = 1000
 epochs_fixed_schedule = 0
-p_exists = np.concatenate([
+alpha_exists = np.concatenate([
     [1] * epochs_fixed_schedule,
-    np.linspace(1, 6, epochs - epochs_fixed_schedule)])
+    np.linspace(1, 4, epochs - epochs_fixed_schedule)])
 for epoch in range(epochs):
     with tf.GradientTape() as tape:
-        loss = - axioms(p_exists[epoch])
+        loss = - axioms(alpha_exists[epoch])
     grads = tape.gradient(loss, logits_model.trainable_variables)
     optimizer.apply_gradients(zip(grads, logits_model.trainable_variables))
     if epoch % 100 == 0:
-        log_sat = axioms(p_exists[epoch])
+        log_sat = axioms(alpha_exists[epoch])
         loss = - log_sat
         sat = tf.math.exp(log_sat)
         print("Epoch %d: Sat Level %.3f, Loss %.3f" % (epoch, sat, loss))
-log_sat = axioms(p_exists[epoch])
+log_sat = axioms(alpha_exists[epoch])
 loss = - log_sat
 sat = tf.math.exp(log_sat)
 print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f" % (epoch, sat, loss))
@@ -94,4 +93,4 @@ print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f" % (epoch, s
 # EVALUATE
 predictions = tf.math.argmax(C([x, cluster]).tensor, axis=1)
 print(data.adjusted_rand_score(dataset.labels, predictions))  # 0.63
-data.save_pdf_predictions(features, predictions, dataset.label_names, save_prefix="ltn_prod")
+data.save_pdf_predictions(features, predictions, dataset.label_names, save_prefix="logltn")
