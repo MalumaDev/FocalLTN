@@ -235,11 +235,13 @@ def chunks(lst, n):
 
 def get_box_data(
         training: bool = True,
-        min_bb_size: int = config["bounding_box_minimal_size"],
+        min_bb_size: int = None,
         print_type_metrics: bool = False,
         roi_features_in_memory: bool = True
 ) -> list[BoxData]:
     set_types()
+    if min_bb_size is None:
+        min_bb_size = config["bounding_box_minimal_size"]
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
     if not os.path.exists(data_dir):
         raise FileNotFoundError(f"Directory {data_dir} does not exist.")
@@ -292,9 +294,13 @@ def get_box_data(
 
 def filter_box_data_with_labeled_ratio_in_picture_groups(
         box_data: list[BoxData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"],
+        labeled_ratio: float = None,
+        seed: int = None,
         print_type_metrics: bool = False) -> list[BoxData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     pics = set([box.pic for box in box_data])
     n_total = len(pics)
     logging.info(f'Boxes sampled from {n_total} pictures in total.')
@@ -312,8 +318,12 @@ def filter_box_data_with_labeled_ratio_in_picture_groups(
 
 def filter_box_data_with_labeled_ratio(
         box_data: list[BoxData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"]) -> list[BoxData]:
+        labeled_ratio: float = None,
+        seed: int = None) -> list[BoxData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     n_total = len(box_data)
     logging.info(f'Original data has {n_total} boxes.')
     n_keep = int(labeled_ratio * n_total)
@@ -327,8 +337,12 @@ def filter_box_data_with_labeled_ratio(
 
 def filter_paired_data_with_labeled_ratio(
         paired_data: list[PairedData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"]) -> list[PairedData]:
+        labeled_ratio: float = None,
+        seed: int = None) -> list[PairedData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     n_total = len(paired_data)
     logging.info(f'Original data has {n_total} pairs.')
     n_keep = int(labeled_ratio * n_total)
