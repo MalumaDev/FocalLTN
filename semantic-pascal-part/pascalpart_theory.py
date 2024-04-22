@@ -35,7 +35,7 @@ def get_theory(
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
     elif op_config == "focal_ltn":
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
-        operator_config = get_stable_rl_operator_config(is_focal=True)
+        operator_config = get_stable_rl_operator_config(is_focal=True, gamma=config["gamma"])
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
 
@@ -66,7 +66,7 @@ def get_prod_rl_operator_config() -> ltnw.OperatorConfig:
     return op_config
 
 
-def get_stable_rl_operator_config(is_focal=False) -> ltnw.OperatorConfig:
+def get_stable_rl_operator_config(is_focal=False, gamma=2) -> ltnw.OperatorConfig:
     p_forall = config["p_universal_quantifier"]
     p_exists = config["p_existential_quantifier"]
     not_ = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
@@ -77,7 +77,7 @@ def get_stable_rl_operator_config(is_focal=False) -> ltnw.OperatorConfig:
     if not is_focal:
         forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
     else:
-        forall = ltn.Wrapper_Quantifier(focal.FocalAggreg(is_log=False), semantics="forall")
+        forall = ltn.Wrapper_Quantifier(focal.FocalAggreg(is_log=False, gamma=gamma), semantics="forall")
     and_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Prod())
     or_aggreg = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMean(p=p_exists))
     op_config = ltnw.OperatorConfig(not_=not_, and_=and_, or_=or_, implies=implies,

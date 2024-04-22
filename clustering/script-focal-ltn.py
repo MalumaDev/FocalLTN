@@ -10,6 +10,8 @@ import argparse
 from focal import FocalAggreg
 from pathlib import Path
 import sys
+
+
 def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--csv-path', type=str, default="Cluster_log_ltn.csv")
@@ -23,6 +25,7 @@ def parse_args():
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
+
 
 args = parse_args()
 epochs = args['epochs']
@@ -50,20 +53,23 @@ features = dataset.features
 distances = euclidean_distances(features, features)
 close_threshold = np.percentile(distances, 5)
 
+
 # GROUNDING
 class MLP(tf.keras.Model):
     """ Model to call as P(x,class) """
-    def __init__(self, n_classes, hidden_layer_sizes=(16,16,16)):
+
+    def __init__(self, n_classes, hidden_layer_sizes=(16, 16, 16)):
         super().__init__()
         self.denses = [tf.keras.layers.Dense(s, activation="elu") for s in hidden_layer_sizes]
         self.dense_class = tf.keras.layers.Dense(n_classes)
-        
+
     def call(self, inputs):
         x = inputs[0]
         for dense in self.denses:
             x = dense(x)
         logits = self.dense_class(x)
         return logits
+
 
 logits_model = MLP(nr_of_clusters)
 C = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax", with_class_indexing=True)
@@ -72,8 +78,8 @@ cluster_y = ltn.Variable("cluster_y", dataset.labels)
 cluster = ltn.Variable("cluster", tf.one_hot(dataset.labels, nr_of_clusters))
 # cluster = ltn.Variable("cluster", range(nr_of_clusters))
 
-x = ltn.Variable("x",features)
-y = ltn.Variable("y",features)
+x = ltn.Variable("x", features)
+y = ltn.Variable("y", features)
 
 And = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
 Or = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogSumExp(alpha=5))
@@ -83,13 +89,14 @@ if not use_focal:
 else:
     Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'], alpha=5), semantics="forall")
 
-Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=5),semantics="exists")
+Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=5), semantics="exists")
 formula_aggregator = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Sum())
 
-eucl_dist = ltn.Function.Lambda(lambda inputs: tf.expand_dims(tf.norm(inputs[0]-inputs[1],axis=1),axis=1))
+eucl_dist = ltn.Function.Lambda(lambda inputs: tf.expand_dims(tf.norm(inputs[0] - inputs[1], axis=1), axis=1))
 is_greater_than = ltn.Predicate.Lambda(lambda inputs: inputs[0] > inputs[1])
 close_thr = ltn.Constant(close_threshold, trainable=False)
 equal_of = ltn.Predicate.Lambda(lambda inputs: inputs[0] == inputs[1])
+
 
 # CONSTRAINTS
 def axioms(alpha_exists, forall_only=False):
@@ -97,9 +104,9 @@ def axioms(alpha_exists, forall_only=False):
         axioms = [
             Forall(x, Exists(cluster, C.log([x, cluster]), alpha=alpha_exists)),
             Forall(cluster, Exists(x, C.log([x, cluster]), alpha=alpha_exists)),
-            Forall([cluster,x,y],
-                    Or(C.nlog([x,cluster]),C.log([y,cluster]), alpha=alpha_exists),
-                    mask = is_greater_than([close_thr,eucl_dist([x,y])])),
+            Forall([cluster, x, y],
+                   Or(C.nlog([x, cluster]), C.log([y, cluster]), alpha=alpha_exists),
+                   mask=is_greater_than([close_thr, eucl_dist([x, y])])),
         ]
     else:
         axioms = [
@@ -107,14 +114,15 @@ def axioms(alpha_exists, forall_only=False):
             Forall(ltn.diag(y, cluster_y), C.log([y, cluster_y])),
             Forall(ltn.diag(cluster_x, x),
                    Forall(ltn.diag(y, cluster_y),
-                       Or(C.nlog([x, cluster_x]), C.log([y, cluster_y]), alpha=alpha_exists),
-                       mask=is_greater_than([close_thr, eucl_dist([x, y])]) and equal_of([cluster_x, cluster_y])))
+                          Or(C.nlog([x, cluster_x]), C.log([y, cluster_y]), alpha=alpha_exists),
+                          mask=is_greater_than([close_thr, eucl_dist([x, y])]) and equal_of([cluster_x, cluster_y])))
         ]
-    
+
     sat_level = formula_aggregator(axioms).tensor
     return sat_level
 
-axioms(alpha_exists=5, forall_only=args["forall_only"]) # first call to build the graph
+
+axioms(alpha_exists=5, forall_only=args["forall_only"])  # first call to build the graph
 
 # TRAINING
 
@@ -123,18 +131,18 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=0.002)
 
 epochs_fixed_schedule = 0
 alpha_exists = np.concatenate([
-        [1]*epochs_fixed_schedule,
-        np.linspace(1, 4, epochs-epochs_fixed_schedule)])
+    [1] * epochs_fixed_schedule,
+    np.linspace(1, 4, epochs - epochs_fixed_schedule)])
 
 name = "log"
 if use_focal:
     name += f"_focal{args['gamma']}"
-name_ns = name + f"_{imbalance}_"+str(args["forall_only"])
+name_ns = name + f"_{imbalance}_" + str(args["forall_only"])
 args["name"] = name_ns
 run = wandb.init(
     project="NeSy24Cluster",
     config=args,
-    name= name_ns + f"_{args['seed']}",
+    name=name_ns + f"_{args['seed']}",
     entity="grains-polito")
 
 for epoch in range(epochs):
@@ -142,20 +150,20 @@ for epoch in range(epochs):
         loss = - axioms(alpha_exists[epoch], forall_only=args["forall_only"])
     grads = tape.gradient(loss, logits_model.trainable_variables)
     optimizer.apply_gradients(zip(grads, logits_model.trainable_variables))
-    if epoch%100 == 0:
+    if epoch % 100 == 0:
         log_sat = axioms(alpha_exists[epoch], forall_only=args["forall_only"])
         sat = tf.math.exp(-log_sat)
         loss = 1 - sat
-        print("Epoch %d: Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
+        print("Epoch %d: Sat Level %.3f, Loss %.3f" % (epoch, sat, loss))
         run.log({"Sat Level": sat, "Loss": loss})
 log_sat = axioms(alpha_exists[epoch], forall_only=args["forall_only"])
 sat = tf.math.exp(-log_sat)
 loss = 1 - sat
-print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f"%(epoch, sat, loss))
+print("Training finished at Epoch %d with Sat Level %.3f, Loss %.3f" % (epoch, sat, loss))
 run.log({"Sat Level": sat, "Loss": loss})
 
 # EVALUATE
-predictions = tf.math.argmax(C([x,cluster_x]).tensor,axis=1)
-print(data.adjusted_rand_score(dataset.labels,predictions)) # 0.63
+predictions = tf.math.argmax(C([x, cluster_x]).tensor, axis=1)
+print(data.adjusted_rand_score(dataset.labels, predictions))  # 0.63
 data.save_pdf_predictions(features, predictions, dataset.label_names, csv_path=csv_path)
-run.log({"AdjRandIdx": data.adjusted_rand_score(dataset.labels,predictions)})
+run.log({"AdjRandIdx": data.adjusted_rand_score(dataset.labels, predictions)})

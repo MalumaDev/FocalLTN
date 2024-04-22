@@ -12,7 +12,9 @@ configs_dir = "configs_paper_focal"
 destination_file = "config.yml"
 
 # Trova tutti i file YAML nella directory dei file di configurazione
-config_files = glob.glob(os.path.join(configs_dir, "*.yml"))
+config_files = list(glob.glob(os.path.join(configs_dir, "*.yml")))
+
+config_files.sort(key=lambda x: (x.split("_")[-1], x))
 
 # Loop attraverso i file di configurazione
 for config_file in tqdm(config_files):
@@ -20,7 +22,7 @@ for config_file in tqdm(config_files):
     # Copia il file di configurazione nel file di destinazione
     # shutil.copy(config_file, destination_file)
 
-    with open("config.yml", "r") as f:
+    with open(config_file, "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     config["data_ratio"] = 0.5

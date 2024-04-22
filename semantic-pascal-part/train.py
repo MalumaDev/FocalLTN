@@ -99,11 +99,12 @@ if __name__ == "__main__":
     if "random_seed" not in config:
         config["random_seed"] = random.randint(0, 2 ** 32 - 1)
 
-    if not hasattr(config, "workers"):
+    if "workers" not in config:
         config["workers"] = 12
 
-    if not hasattr(config, "chunk_size"):
+    if "chunk_size" not in config:
         config["chunk_size"] = 100
+
 
 
 
@@ -117,8 +118,11 @@ if __name__ == "__main__":
     name = f"{config['ltn_config']}"
     if config["ltn_config"] == "stable_rl":
         name += f"_{config['p_universal_quantifier']}"
-    elif hasattr(config, "gamma"):
+    if "focal" in name and "gamma" in config:
         name += f"_{config['gamma']}"
+
+    if "data_ratio" in config:
+        name += f"_{config['data_ratio']}"
 
     config["group_name"] = name
 
