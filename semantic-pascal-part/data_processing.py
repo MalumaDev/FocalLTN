@@ -22,7 +22,7 @@ config = None
 
 
 def set_types():
-    global SELECTED_TYPES, CLASSES_FILE
+    global SELECTED_TYPES, CLASSES_FILE, config
     if SELECTED_TYPES is not None:
         return
     if config["data_category"] == 'vehicle':

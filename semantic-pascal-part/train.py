@@ -106,14 +106,11 @@ if __name__ == "__main__":
     if "chunk_size" not in config:
         config["chunk_size"] = 100
 
-
-
-
+    data_processing.config = config
     pascalpart_domains.config = config
     pascalpart_theory.config = config
     pascalpart_theory_log.config = config
     evaluation.config = config
-    data_processing.config = config
 
     # check if run already exists
     name = f"{config['ltn_config']}"
