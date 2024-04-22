@@ -176,8 +176,6 @@ def main(csv_path, seed, stable_config, p_value, lr, epochs):
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
     name = stable_config + "_" + str(p_value)
-    if "data_ratio" in config:
-        name += f"_{config['data_ratio']}"
     config["group_name"] = name
     name = f"{name}_{seed}"
     try:
