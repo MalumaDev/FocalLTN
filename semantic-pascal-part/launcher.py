@@ -2,6 +2,7 @@ import glob
 import shutil
 import os
 
+import yaml
 from tqdm import tqdm
 
 # Percorso della directory dei file di configurazione
@@ -17,6 +18,15 @@ config_files = glob.glob(os.path.join(configs_dir, "*.yml"))
 for config_file in tqdm(config_files):
     print(config_file)  # Stampa il nome del file
     # Copia il file di configurazione nel file di destinazione
-    shutil.copy(config_file, destination_file)
+    # shutil.copy(config_file, destination_file)
+
+    with open("config.yml", "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    config["data_ratio"] = 0.5
+
+    with open(destination_file, "w") as f:
+        yaml.dump(config, f)
+
     # Esegui il comando di train.py
     os.system("python train.py")

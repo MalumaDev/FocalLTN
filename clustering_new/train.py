@@ -155,7 +155,10 @@ def main(csv_path, seed, stable_config, p_value, lr, epochs):
     close_threshold = np.percentile(distances, 5)
 
     logits_model = MLP(nr_of_clusters)
-    C = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
+    if "log" in stable_config:
+        C = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax", with_class_indexing=True)
+    else:
+        C = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
     cluster = ltn.Variable("cluster", range(nr_of_clusters))
 
     x = ltn.Variable("x", features)
@@ -167,12 +170,14 @@ def main(csv_path, seed, stable_config, p_value, lr, epochs):
 
     axioms = get_axioms(stable_config, C, cluster, x, y, close_thr, is_greater_than, eucl_dist, p_value)
 
-    axioms(p_exists=p_value)  # first call to build the graph
+    axioms(p_value)  # first call to build the graph
 
     # TRAINING
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
     name = stable_config + "_" + str(p_value)
+    if "data_ratio" in config:
+        name += f"_{config['data_ratio']}"
     config["group_name"] = name
     name = f"{name}_{seed}"
     try:

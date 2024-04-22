@@ -4,6 +4,7 @@ import csv
 import collections
 import logging
 import dataclasses
+import random
 import time
 import zipfile
 from functools import partial
@@ -17,10 +18,10 @@ import h5py
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-if not hasattr(config, "workers"):
+if "workers" not in config:
     config["workers"] = 12
 
-if not hasattr(config, "chunk_size"):
+if "chunk_size" not in config:
     config["chunk_size"] = 100
 
 DATA_FOLDER = "data"
@@ -217,6 +218,7 @@ def compute_data(filename, select_classes, min_bb_size, class_to_id, roi_feature
                                _position=position,
                                h5_file=filename,
                                type_str=type_str))
+
     return res
 
 
@@ -238,6 +240,8 @@ def get_box_data(
     hdf5_file = os.path.join(data_dir, "box_features.hdf5")
     f = h5py.File(hdf5_file)
     all_box_ids = list(f.keys())
+    if "data_ratio" in config and config["data_ratio"] != 1:
+        all_box_ids = random.sample(all_box_ids, int(config["data_ratio"] * len(all_box_ids)))
     logging.info(f"{len(all_box_ids)} bounding boxes found.")
     class_to_id = get_classes_to_id()
     select_classes = set(class_to_id.keys())
