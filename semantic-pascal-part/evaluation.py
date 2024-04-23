@@ -76,9 +76,11 @@ def get_test_datasets() -> TestDatasets:
 
 def count_reasonable_false_partof_positives(
         false_positives_per_types: dict[tuple[str, str], int],
-        part_to_wholes: dict[str, list[str]] = data_processing.get_part_to_wholes_ontologies(),
+        part_to_wholes: dict[str, list[str]] = None,
         reverse: bool = False
 ) -> int:
+    if part_to_wholes is None:
+        part_to_wholes = data_processing.get_part_to_wholes()
     total = 0
     for types, count in false_positives_per_types.items():
         if not reverse and types[1] in part_to_wholes[types[0]]:

@@ -15,43 +15,43 @@ import numpy as np
 import yaml
 import h5py
 
-with open("config.yml", "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
-
-if "workers" not in config:
-    config["workers"] = 12
-
-if "chunk_size" not in config:
-    config["chunk_size"] = 100
-
 DATA_FOLDER = "data"
+SELECTED_TYPES = None
+CLASSES_FILE = None
+config = None
 
-if config["data_category"] == 'vehicle':
-    SELECTED_TYPES = np.array(
-        ['aeroplane', 'artifact_wing', 'body', 'engine', 'stern', 'wheel', 'bicycle', 'chain_wheel', 'handlebar',
-         'headlight', 'saddle', 'bus', 'bodywork', 'door', 'license_plate', 'mirror', 'window', 'car', 'motorbike',
-         'train', 'coach', 'locomotive', 'boat'])
-    CLASSES_FILE = "classes_vehicle.csv"
-if config["data_category"] == 'indoor':
-    SELECTED_TYPES = np.array(
-        ['bottle', 'body', 'cap', 'pottedplant', 'plant', 'pot', 'tvmonitor', 'screen', 'chair', 'sofa', 'diningtable'])
-    CLASSES_FILE = "classes_indoor.csv"
-if config["data_category"] == 'animal':
-    SELECTED_TYPES = np.array(
-        ['person', 'arm', 'ear', 'ebrow', 'foot', 'hair', 'hand', 'mouth', 'nose', 'eye', 'head', 'leg', 'neck',
-         'torso', 'cat', 'tail', 'bird', 'animal_wing', 'beak', 'sheep', 'horn', 'muzzle', 'cow', 'dog', 'horse',
-         'hoof'])
-    CLASSES_FILE = "classes_animal.csv"
-if config["data_category"] == 'all':
-    SELECTED_TYPES = np.array(
-        ['handlebar', 'tvmonitor', 'ebrow', 'horn', 'sofa', 'mirror', 'coach', 'sheep', 'train', 'horse', 'torso',
-         'animal_wing', 'hand', 'headlight', 'foot', 'leg', 'cow', 'body', 'bodywork', 'bus', 'hoof', 'engine',
-         'person', 'bottle', 'locomotive', 'tail',
-         'chair', 'screen', 'wheel', 'boat', 'nose', 'pottedplant', 'motorbike', 'arm', 'bird', 'pot', 'cat',
-         'diningtable', 'ear', 'neck', 'car', 'plant', 'cap', 'beak', 'door', 'artifact_wing', 'bicycle',
-         'license_plate', 'hair', 'window', 'chain_wheel', 'head', 'dog', 'aeroplane',
-         'stern', 'mouth', 'eye', 'saddle', 'muzzle'])
-    CLASSES_FILE = "classes.csv"
+
+def set_types():
+    global SELECTED_TYPES, CLASSES_FILE, config
+    if SELECTED_TYPES is not None:
+        return
+    if config["data_category"] == 'vehicle':
+        SELECTED_TYPES = np.array(
+            ['aeroplane', 'artifact_wing', 'body', 'engine', 'stern', 'wheel', 'bicycle', 'chain_wheel', 'handlebar',
+             'headlight', 'saddle', 'bus', 'bodywork', 'door', 'license_plate', 'mirror', 'window', 'car', 'motorbike',
+             'train', 'coach', 'locomotive', 'boat'])
+        CLASSES_FILE = "classes_vehicle.csv"
+    if config["data_category"] == 'indoor':
+        SELECTED_TYPES = np.array(
+            ['bottle', 'body', 'cap', 'pottedplant', 'plant', 'pot', 'tvmonitor', 'screen', 'chair', 'sofa',
+             'diningtable'])
+        CLASSES_FILE = "classes_indoor.csv"
+    if config["data_category"] == 'animal':
+        SELECTED_TYPES = np.array(
+            ['person', 'arm', 'ear', 'ebrow', 'foot', 'hair', 'hand', 'mouth', 'nose', 'eye', 'head', 'leg', 'neck',
+             'torso', 'cat', 'tail', 'bird', 'animal_wing', 'beak', 'sheep', 'horn', 'muzzle', 'cow', 'dog', 'horse',
+             'hoof'])
+        CLASSES_FILE = "classes_animal.csv"
+    if config["data_category"] == 'all':
+        SELECTED_TYPES = np.array(
+            ['handlebar', 'tvmonitor', 'ebrow', 'horn', 'sofa', 'mirror', 'coach', 'sheep', 'train', 'horse', 'torso',
+             'animal_wing', 'hand', 'headlight', 'foot', 'leg', 'cow', 'body', 'bodywork', 'bus', 'hoof', 'engine',
+             'person', 'bottle', 'locomotive', 'tail',
+             'chair', 'screen', 'wheel', 'boat', 'nose', 'pottedplant', 'motorbike', 'arm', 'bird', 'pot', 'cat',
+             'diningtable', 'ear', 'neck', 'car', 'plant', 'cap', 'beak', 'door', 'artifact_wing', 'bicycle',
+             'license_plate', 'hair', 'window', 'chain_wheel', 'head', 'dog', 'aeroplane',
+             'stern', 'mouth', 'eye', 'saddle', 'muzzle'])
+        CLASSES_FILE = "classes.csv"
 
 
 def get_whole_to_parts_ontologies() -> dict[str, list[str]]:
@@ -61,6 +61,7 @@ def get_whole_to_parts_ontologies() -> dict[str, list[str]]:
     Returns:
         dict[str,list[str]]: key = whole, values = possible parts that appear in whole.
     """
+    set_types()
     with open(os.path.join(DATA_FOLDER, 'pascalPartOntology.csv')) as f:
         csv_reader = csv.reader(f)
         whole_to_parts = collections.defaultdict(list)
@@ -77,6 +78,7 @@ def get_part_to_wholes_ontologies() -> dict[str, list[str]]:
     Returns:
         dict[str,list[str]]: key = part, values = possible wholes where part appears.
     """
+    set_types()
     with open(os.path.join(DATA_FOLDER, 'pascalPartOntology.csv')) as f:
         csv_reader = csv.reader(f)
         part_to_wholes = collections.defaultdict(list)
@@ -93,6 +95,7 @@ def get_id_to_classes() -> dict[int, str]:
     Returns:
         dict[int,str]: key = class id, value = class label
     """
+    set_types()
     with open(os.path.join(DATA_FOLDER, CLASSES_FILE)) as f:
         csv_reader = csv.reader(f)
         id_to_classes = {}
@@ -109,6 +112,7 @@ def get_classes_to_id() -> dict[str, int]:
     Returns:
         dict[str,int]: key = class label, value = class id
     """
+    set_types()
     with open(os.path.join(DATA_FOLDER, CLASSES_FILE)) as f:
         csv_reader = csv.reader(f)
         classes_to_id = {}
@@ -197,6 +201,7 @@ def is_big_enough(coords, min_bb_size):
 
 
 def compute_data(filename, select_classes, min_bb_size, class_to_id, roi_features_in_memory, box_ids):
+    set_types()
     if not isinstance(box_ids, list):
         box_ids = list(box_ids)
     with h5py.File(filename, 'r') as f:
@@ -229,10 +234,13 @@ def chunks(lst, n):
 
 def get_box_data(
         training: bool = True,
-        min_bb_size: int = config["bounding_box_minimal_size"],
+        min_bb_size: int = None,
         print_type_metrics: bool = False,
         roi_features_in_memory: bool = True
 ) -> list[BoxData]:
+    set_types()
+    if min_bb_size is None:
+        min_bb_size = config["bounding_box_minimal_size"]
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
     if not os.path.exists(data_dir):
         raise FileNotFoundError(f"Directory {data_dir} does not exist.")
@@ -283,9 +291,13 @@ def get_box_data(
 
 def filter_box_data_with_labeled_ratio_in_picture_groups(
         box_data: list[BoxData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"],
+        labeled_ratio: float = None,
+        seed: int = None,
         print_type_metrics: bool = False) -> list[BoxData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     pics = set([box.pic for box in box_data])
     n_total = len(pics)
     logging.info(f'Boxes sampled from {n_total} pictures in total.')
@@ -303,8 +315,12 @@ def filter_box_data_with_labeled_ratio_in_picture_groups(
 
 def filter_box_data_with_labeled_ratio(
         box_data: list[BoxData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"]) -> list[BoxData]:
+        labeled_ratio: float = None,
+        seed: int = None) -> list[BoxData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     n_total = len(box_data)
     logging.info(f'Original data has {n_total} boxes.')
     n_keep = int(labeled_ratio * n_total)
@@ -318,8 +334,12 @@ def filter_box_data_with_labeled_ratio(
 
 def filter_paired_data_with_labeled_ratio(
         paired_data: list[PairedData],
-        labeled_ratio: float = config["labeled_ratio"],
-        seed: int = config["random_seed"]) -> list[PairedData]:
+        labeled_ratio: float = None,
+        seed: int = None) -> list[PairedData]:
+    if labeled_ratio is None:
+        labeled_ratio = config["labeled_ratio"]
+    if seed is None:
+        seed = config["random_seed"]
     n_total = len(paired_data)
     logging.info(f'Original data has {n_total} pairs.')
     n_keep = int(labeled_ratio * n_total)
@@ -359,6 +379,7 @@ def get_paired_data(
         training: bool = True,
         print_partof_metrics: bool = False
 ) -> list[PairedData]:
+    set_types()
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
     h5file = os.path.join(data_dir, "pairs_partof.hdf5")
     all_box_ids = set([box.id_ for box in box_data])
