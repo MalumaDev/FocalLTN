@@ -173,7 +173,7 @@ if __name__ == "__main__":
     epochs_normal_training = config["epochs"]
 
     logging.info("Building LTN theory.")
-    if config["ltn_config"] in ["stable_rl", "prod_rl", "focal_ltn"]:
+    if config["ltn_config"] in ["stable_rl", "prod_rl", "focal_ltn", "focal_ltn_sum"]:
         theory = pascalpart_theory.get_theory(
             class_to_id=data_processing.get_classes_to_id(),
             part_to_wholes=data_processing.get_part_to_wholes_ontologies(),

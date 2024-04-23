@@ -36,7 +36,11 @@ def get_theory(
     elif op_config == "log_ltn_max":
         operator_config = get_logmax_operator_config()
     elif op_config == "focal_log_ltn":
-        operator_config = get_log_operator_config(is_focal=True, gamma=config["gamma"] if "gamma" in config else 2)
+        operator_config = get_log_operator_config(is_focal=True, gamma=config["gamma"] if "gamma" in config else 2, reduce_type="mean")
+    elif op_config == "focal_log_ltn_sum":
+        operator_config = get_log_operator_config(is_focal=True, gamma=config["gamma"] if "gamma" in config else 2, reduce_type="sum")
+    else:
+        raise ValueError(f"Unknown operator config: {op_config}")
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
 
@@ -98,14 +102,14 @@ def get_logmax_operator_config() -> ltnw.OperatorConfig:
     return op_config
 
 
-def get_log_operator_config(is_focal=False, gamma=2) -> ltnw.OperatorConfig:
+def get_log_operator_config(is_focal=False, gamma=2, reduce_type="mean") -> ltnw.OperatorConfig:
     alpha = config["a_existential_quantifier"]
     not_ = None
     and_ = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.And_Sum())
     or_ = ltn.log.Wrapper_Connective(ltn.log.fuzzy_ops.Or_LogMeanExp(alpha=alpha))
     implies = None
     if is_focal:
-        forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=gamma), semantics="forall")
+        forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=gamma, reduce_type=reduce_type), semantics="forall")
     else:
         forall = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_Mean(), semantics="forall")
     and_aggreg = ltn.log.Wrapper_Formula_Aggregator(ltn.log.fuzzy_ops.Aggreg_Mean())
