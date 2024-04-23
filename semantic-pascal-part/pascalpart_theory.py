@@ -35,7 +35,7 @@ def get_theory(
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
     elif op_config == "focal_ltn":
         formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_Sum())
-        operator_config = get_stable_rl_operator_config(is_focal=True, gamma=config["gamma"])
+        operator_config = get_stable_rl_operator_config(is_focal=True, gamma=config["gamma"] if "gamma" in config else 2)
     grounding = get_grounding(class_to_id)
     constraints = get_constraints(part_to_wholes, whole_to_parts, pascal_doms, grounding, operator_config)
 
