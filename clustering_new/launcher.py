@@ -1,11 +1,11 @@
 import os
 
 methods = {
-    'log_ltn': [5],
-    'focal_log_ltn': [2],
     'stable_rl': [2, 6],
     'prod_rl': [6],
-    'focal_ltn': [2],
+    'log_ltn': [5],
+    'focal_ltn': [1, 2, 6],
+    'focal_log_ltn': [1, 2, 6]
 }
 for seed in range(5):  # range(5):
     for method in methods:
