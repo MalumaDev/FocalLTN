@@ -17,8 +17,8 @@ import h5py
 
 DATA_FOLDER = "data"
 SELECTED_TYPES = None
-CLASSES_FILE = None
-config = None
+CLASSES_FILE = ""
+config = {}
 
 
 def set_types():
@@ -61,7 +61,7 @@ def get_whole_to_parts_ontologies() -> dict[str, list[str]]:
     Returns:
         dict[str,list[str]]: key = whole, values = possible parts that appear in whole.
     """
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     with open(os.path.join(DATA_FOLDER, 'pascalPartOntology.csv')) as f:
         csv_reader = csv.reader(f)
         whole_to_parts = collections.defaultdict(list)
@@ -78,7 +78,7 @@ def get_part_to_wholes_ontologies() -> dict[str, list[str]]:
     Returns:
         dict[str,list[str]]: key = part, values = possible wholes where part appears.
     """
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     with open(os.path.join(DATA_FOLDER, 'pascalPartOntology.csv')) as f:
         csv_reader = csv.reader(f)
         part_to_wholes = collections.defaultdict(list)
@@ -95,7 +95,7 @@ def get_id_to_classes() -> dict[int, str]:
     Returns:
         dict[int,str]: key = class id, value = class label
     """
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     with open(os.path.join(DATA_FOLDER, CLASSES_FILE)) as f:
         csv_reader = csv.reader(f)
         id_to_classes = {}
@@ -112,7 +112,7 @@ def get_classes_to_id() -> dict[str, int]:
     Returns:
         dict[str,int]: key = class label, value = class id
     """
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     with open(os.path.join(DATA_FOLDER, CLASSES_FILE)) as f:
         csv_reader = csv.reader(f)
         classes_to_id = {}
@@ -201,7 +201,6 @@ def is_big_enough(coords, min_bb_size):
 
 
 def compute_data(filename, select_classes, min_bb_size, class_to_id, roi_features_in_memory, box_ids):
-    set_types()
     if not isinstance(box_ids, list):
         box_ids = list(box_ids)
     with h5py.File(filename, 'r') as f:
@@ -238,7 +237,7 @@ def get_box_data(
         print_type_metrics: bool = False,
         roi_features_in_memory: bool = True
 ) -> list[BoxData]:
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     if min_bb_size is None:
         min_bb_size = config["bounding_box_minimal_size"]
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
@@ -294,6 +293,7 @@ def filter_box_data_with_labeled_ratio_in_picture_groups(
         labeled_ratio: float = None,
         seed: int = None,
         print_type_metrics: bool = False) -> list[BoxData]:
+    global SELECTED_TYPES, CLASSES_FILE, config
     if labeled_ratio is None:
         labeled_ratio = config["labeled_ratio"]
     if seed is None:
@@ -317,6 +317,7 @@ def filter_box_data_with_labeled_ratio(
         box_data: list[BoxData],
         labeled_ratio: float = None,
         seed: int = None) -> list[BoxData]:
+    global SELECTED_TYPES, CLASSES_FILE, config
     if labeled_ratio is None:
         labeled_ratio = config["labeled_ratio"]
     if seed is None:
@@ -336,6 +337,7 @@ def filter_paired_data_with_labeled_ratio(
         paired_data: list[PairedData],
         labeled_ratio: float = None,
         seed: int = None) -> list[PairedData]:
+    global SELECTED_TYPES, CLASSES_FILE, config
     if labeled_ratio is None:
         labeled_ratio = config["labeled_ratio"]
     if seed is None:
@@ -379,7 +381,7 @@ def get_paired_data(
         training: bool = True,
         print_partof_metrics: bool = False
 ) -> list[PairedData]:
-    set_types()
+    global SELECTED_TYPES, CLASSES_FILE, config
     data_dir = os.path.join(DATA_FOLDER, "trainval") if training else os.path.join(DATA_FOLDER, "test")
     h5file = os.path.join(data_dir, "pairs_partof.hdf5")
     all_box_ids = set([box.id_ for box in box_data])

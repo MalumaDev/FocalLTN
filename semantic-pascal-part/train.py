@@ -2,6 +2,7 @@ import datetime
 import logging
 import random
 import sys
+
 sys.path.insert(1, '../')
 from typing import Any
 import os
@@ -17,6 +18,23 @@ import yaml
 import tensorflow as tf
 from wandb.integration.keras import WandbMetricsLogger
 
+logging.getLogger().setLevel(logging.INFO)
+
+if len(sys.argv) > 1:
+    config_path = sys.argv[1]
+else:
+    config_path = "config.yml"
+with open(config_path, "r") as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+if "random_seed" not in config:
+    config["random_seed"] = random.randint(0, 2 ** 32 - 1)
+
+if "workers" not in config:
+    config["workers"] = 12
+
+if "chunk_size" not in config:
+    config["chunk_size"] = 100
+
 import data_processing
 import ltn.wrapper as ltnw
 import ltn.utils as ltnu
@@ -24,9 +42,13 @@ import pascalpart_theory, pascalpart_theory_log
 import pascalpart_domains
 import evaluation
 
-logging.getLogger().setLevel(logging.INFO)
+data_processing.config = config
+pascalpart_domains.config = config
+pascalpart_theory.config = config
+pascalpart_theory_log.config = config
+evaluation.config = config
 
-
+data_processing.set_types()
 
 DomGroup = tuple[str]
 DomLabel = str
@@ -91,27 +113,6 @@ def train(
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
-    else:
-        config_path = "config.yml"
-    with open(config_path, "r") as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-    if "random_seed" not in config:
-        config["random_seed"] = random.randint(0, 2 ** 32 - 1)
-
-    if "workers" not in config:
-        config["workers"] = 12
-
-    if "chunk_size" not in config:
-        config["chunk_size"] = 100
-
-    data_processing.config = config
-    pascalpart_domains.config = config
-    pascalpart_theory.config = config
-    pascalpart_theory_log.config = config
-    evaluation.config = config
-
     # check if run already exists
     name = f"{config['ltn_config']}"
     if config["ltn_config"] == "stable_rl":
@@ -148,7 +149,6 @@ if __name__ == "__main__":
 
     df_logger_train = ltnu.logging.DataFrameLogger()
     df_logger_test = ltnu.logging.DataFrameLogger()
-
 
     run = wandb.init(
         project=f"NeSy24PascalPart_{config['data_category'].upper()}",
