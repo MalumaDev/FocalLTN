@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 from tqdm import tqdm
+from wakepy import keep
 
 
 def main(folder):
@@ -45,5 +46,5 @@ def main(folder):
 
 
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp, keep.running() as k:
         main(tmp)
