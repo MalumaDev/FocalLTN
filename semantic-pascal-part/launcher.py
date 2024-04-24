@@ -15,7 +15,7 @@ configs_dir = "configs_paper_sum"
 config_files = list(glob.glob(os.path.join(configs_dir, "*.yml")))
 config_files.sort(key=lambda x: (x.split("_")[-1], x), reverse=True)
 
-data_ratio = 1
+data_ratio = 0.5
 with tempfile.TemporaryDirectory() as destination_folder, keep.running() as k:
     destination_folder = Path(destination_folder)
     # Loop attraverso i file di configurazione
