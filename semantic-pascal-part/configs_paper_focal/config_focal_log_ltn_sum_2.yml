@@ -1,0 +1,35 @@
+a_existential_quantifier: 1
+bounding_box_minimal_size: 6
+data_category: all
+epochs: 10
+epochs_of_pretraining: 1
+float_dtype: float32
+labeled_ratio: 0.05
+ltn_config: focal_log_ltn_sum
+max_a_existential_quantifier: 5
+max_p_existential_quantifier: 5
+min_a_existential_quantifier: 1
+min_p_existential_quantifier: 1
+minibatch_size: 32
+p_existential_quantifier: 5
+p_universal_quantifier: 6
+partof_hidden_layer_sizes:
+- 512
+- 256
+- 256
+- 128
+- 128
+random_seed: 1301
+schedule_a_existential_quantifier: linear
+schedule_p_existential_quantifier: linear
+shuffle_buffer_size: 10000
+test_minibatch_size: 2048
+training_steps_per_epoch: 100
+types_hidden_layer_sizes:
+- 512
+- 256
+- 256
+- 128
+- 128
+with_clustering_axioms: false
+with_mereological_axioms: true
