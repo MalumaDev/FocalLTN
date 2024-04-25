@@ -185,10 +185,14 @@ name += name + f"_{imbalance}_{n_examples_train}_{args['seed']}"
 proj_name = "NeSy24_mnistADD"
 
 runs = wandb.Api().runs(f"grains-polito/{proj_name}")
-for run in runs:
-    if run.name == name:
-        print(f"Run {name} already exists.")
-        sys.exit()
+try:
+    for run in runs:
+        if run.name == name:
+            print(f"Run {name} already exists.")
+            sys.exit()
+
+except:
+    print("No runs found")
 
 run = wandb.init(
     project=proj_name,
