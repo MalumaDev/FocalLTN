@@ -181,7 +181,7 @@ if use_focal:
     name += f"_focal{args['gamma']}_{reduce_type}"
 
 args["group_name"] = name
-name += name + f"_{imbalance}_{n_examples_train}_{args['seed']}",
+name += name + f"_{imbalance}_{n_examples_train}_{args['seed']}"
 proj_name = "NeSy24_mnistADD"
 
 runs = wandb.Api().runs(f"grains-polito/{proj_name}")

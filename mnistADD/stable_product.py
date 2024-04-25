@@ -187,7 +187,7 @@ else:
     name += f"_p{p_forall}"
 
 args["group_name"] = name
-name += f"{imbalance}_{n_examples_train}_{args['seed']}",
+name += f"{imbalance}_{n_examples_train}_{args['seed']}"
 proj_name = "NeSy24_mnistADD"
 runs = wandb.Api().runs(f"grains-polito/{proj_name}")
 for run in runs:
