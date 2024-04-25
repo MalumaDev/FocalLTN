@@ -1,7 +1,10 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 from random import randint
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import numpy as np
 import tensorflow as tf
@@ -26,6 +29,7 @@ def parse_args():
     parser.add_argument('--use_focal', action='store_true')
     parser.add_argument('--gamma', type=float, default=2)
     parser.add_argument('--imbalance', type=float, default=1.)
+    parser.add_argument('--reduce_type', type=str, default="mean")
 
     args = parser.parse_args()
     dict_args = vars(args)
@@ -43,6 +47,8 @@ p_forall = args["p"]
 imbalance = args['imbalance']
 use_focal = args['use_focal']
 args["task_type"] = "SP"
+reduce_type = args['reduce_type']
+gamma = args['gamma']
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")
@@ -84,7 +90,7 @@ Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
 if not use_focal:
     Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=p_forall), semantics="forall")
 else:
-    Forall = ltn.Wrapper_Quantifier(FocalAggreg(is_log=False), semantics="forall")
+    Forall = ltn.Wrapper_Quantifier(FocalAggreg(is_log=False, reduce_type=reduce_type, gamma=gamma), semantics="forall")
 
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(), semantics="exists")
 
@@ -176,11 +182,23 @@ for epoch in range(EPOCHS):
 
 name = "SP"
 if use_focal:
-    name += f"_focal{args['gamma']}"
+    name += f"_focal{args['gamma']}_{reduce_type}"
+else:
+    name += f"_p{p_forall}"
+
+args["group_name"] = name
+name += f"{imbalance}_{n_examples_train}_{args['seed']}",
+proj_name = "NeSy24_mnistADD"
+runs = wandb.Api().runs(f"grains-polito/{proj_name}")
+for run in runs:
+    if run.name == name:
+        print(f"Run {name} already exists.")
+        sys.exit()
+
 run = wandb.init(
-    project="NeSy24",
+    project=proj_name,
     config=args,
-    name=name + f"_{p_forall}_{imbalance}_{n_examples_train}_{args['seed']}",
+    name=name,
     entity="grains-polito"
 )
 
