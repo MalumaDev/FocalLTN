@@ -9,13 +9,13 @@ from tqdm import tqdm
 from wakepy import keep
 
 # Percorso della directory dei file di configurazione
-configs_dir = "configs_paper_sum"
+configs_dir = "config_revert_log"
 
 # Trova tutti i file YAML nella directory dei file di configurazione
 config_files = list(glob.glob(os.path.join(configs_dir, "*.yml")))
 config_files.sort(key=lambda x: (x.split("_")[-1], x), reverse=True)
 
-data_ratio = 0.5
+data_ratio = 1
 with tempfile.TemporaryDirectory() as destination_folder, keep.running() as k:
     destination_folder = Path(destination_folder)
     # Loop attraverso i file di configurazione

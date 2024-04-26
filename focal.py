@@ -8,6 +8,7 @@ class FocalAggreg():
         self.stable = stable
         self.gamma = gamma
         self.is_log = is_log
+        self.revert_log = tf.math.exp if is_log else lambda x: x
         if reduce_type == 'sum':
             self.reduce_type = tf.math.reduce_sum
         elif reduce_type == 'mean':
@@ -58,5 +59,5 @@ class FocalAggreg():
             pt = xs
             xs = tf.math.log(xs)
 
-        return self.reduce_type(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
+        return self.reduce_type(self.revert_log(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs)), axis=axis,
                                 keepdims=keepdims)

@@ -125,13 +125,13 @@ if __name__ == "__main__":
 
     config["group_name"] = name
 
-    name += f"_{config['random_seed']}"
+    name += f"_{config['random_seed']}_test"
 
-    runs = wandb.Api().runs(f"grains-polito/NeSy24PascalPart_{config['data_category'].upper()}")
-    for run in runs:
-        if run.name == name:
-            logging.info(f"Run {name} already exists.")
-            sys.exit()
+    # runs = wandb.Api().runs(f"grains-polito/NeSy24PascalPart_{config['data_category'].upper()}")
+    # for run in runs:
+    #     if run.name == name:
+    #         logging.info(f"Run {name} already exists.")
+    #         sys.exit()
 
     keras.utils.set_random_seed(config["random_seed"])
     logging.info("Loading training data.")
