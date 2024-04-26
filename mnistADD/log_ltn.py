@@ -1,8 +1,10 @@
+import os
 import sys
 from functools import partial
 from pathlib import Path
 from random import randint
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import tensorflow as tf
 import wandb
 
@@ -24,7 +26,8 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--use_focal', action='store_true')
     parser.add_argument('--gamma', type=float, default=2)
-    parser.add_argument('--imbalance', type=float, default=0.99)
+    parser.add_argument('--imbalance', type=float, default=1)
+    parser.add_argument('--reduce_type', type=str, default="mean")
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
@@ -40,6 +43,7 @@ csv_path = Path(args['csv_path'])
 use_focal = args['use_focal']
 imbalance = args['imbalance']
 args["task_type"] = "log"
+reduce_type = args['reduce_type']
 
 if csv_path.exists():
     print(f"File {csv_path} already exists. Exiting.")
@@ -80,7 +84,7 @@ if not use_focal:
     Digit = ltn.log.Predicate.FromLogits(logits_model, activation_function="softmax")
     Digit.__call__ = Digit.log
 else:
-    Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma']), semantics="forall")
+    Forall = ltn.log.Wrapper_Quantifier(FocalAggreg(gamma=args['gamma'],reduce_type=reduce_type), semantics="forall")
     Digit = ltn.Predicate.FromLogits(logits_model, activation_function="softmax")
 
 Exists = ltn.log.Wrapper_Quantifier(ltn.log.fuzzy_ops.Aggreg_LogSumExp(alpha=1), semantics="exists")
@@ -174,11 +178,26 @@ for epoch in range(EPOCHS):
 
 name = "log"
 if use_focal:
-    name += f"_focal{args['gamma']}"
+    name += f"_focal{args['gamma']}_{reduce_type}"
+
+args["group_name"] = name
+name += name + f"_{imbalance}_{n_examples_train}_{args['seed']}"
+proj_name = "NeSy24_mnistADD"
+
+runs = wandb.Api().runs(f"grains-polito/{proj_name}")
+try:
+    for run in runs:
+        if run.name == name:
+            print(f"Run {name} already exists.")
+            sys.exit()
+
+except:
+    print("No runs found")
+
 run = wandb.init(
-    project="NeSy24",
+    project=proj_name,
     config=args,
-    name= name + f"_{imbalance}_{n_examples_train}_{args['seed']}",
+    name= name,
     entity="grains-polito"
 )
 
