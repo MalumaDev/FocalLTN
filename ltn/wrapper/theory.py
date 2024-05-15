@@ -7,6 +7,7 @@ import tensorflow as tf
 from wandb.integration.keras import WandbMetricsLogger
 
 import ltn
+from ltn import Formula
 from ltn.wrapper.constraints import Constraint
 from ltn.wrapper.grounding import Grounding
 from ltn.wrapper.domains import Domain, DatasetIterator
@@ -40,7 +41,7 @@ class Theory:
         constraints = constraints_subset if constraints_subset is not None else self.constraints
         optimizer = optimizer if optimizer else self.optimizer
         with tf.GradientTape() as tape:
-            wffs = []
+            # wffs = []
             # with concurrent.futures.ThreadPoolExecutor() as executor:
             #     results = [executor.submit(tf.function(lambda: (cstr.call_with_domains(), cstr.label))) for cstr in
             #                constraints]
@@ -48,10 +49,45 @@ class Theory:
             #         res, label = res.result()
             #         wffs.append(res)
             #         self.constraint_metrics[label].update_state(wffs[-1].tensor)
+
+
+            # for cstr in constraints:
+            #     wffs.append(cstr.call_with_domains())
+            #     self.constraint_metrics[cstr.label].update_state(wffs[-1].tensor)
+
+            # temp = tf.constant([0], dtype=float)
+            # temp2 = tf.convert_to_tensor(["N"])
+
+            wffs = []
             for cstr in constraints:
                 wffs.append(cstr.call_with_domains())
-                self.constraint_metrics[cstr.label].update_state(wffs[-1].tensor)
+                # self.constraint_metrics[cstr.label].update_state(wffs[-1].tensor)
 
+            # def fun(k, temp, temp2):
+            #     res = constraints[k].call_with_domains()
+            #     free = res.free_vars
+            #     if not free:
+            #         temp2 = tf.concat([temp2, ["N"]], axis=0)
+            #     else:
+            #         temp2 = tf.concat([temp2, free], axis=0)
+            #     return k + 1, tf.concat([temp, [res.tensor]], axis=0), temp2
+            #
+            # _, temp, temp2 = tf.compat.v1.while_loop(
+            #     lambda k, temp, temp2: k < len(constraints),
+            #     lambda k, temp, temp2: fun(k, temp, temp2),
+            #     [tf.constant(0), temp, temp2],
+            #     parallel_iterations=60
+            # )
+            #
+            # temp = temp[1:]
+            # temp2 = temp2[1:]
+            # temp3 = []
+            # for i, cstr in enumerate(constraints):
+            #     t = temp2.numpy().astype('str')
+            #     temp3.append(Formula(temp[i], t[i] if t[i] != "N" else []))
+            #     # self.constraint_metrics[cstr.label].update_state(temp[i])
+
+            # agg_sat = self.formula_aggregator(temp3).tensor
             agg_sat = self.formula_aggregator(wffs).tensor
             loss = 1 - agg_sat
             self.agg_sat_metric.update_state(agg_sat)
@@ -61,8 +97,8 @@ class Theory:
         gradients = tape.gradient(loss, trainable_variables)
         optimizer.apply_gradients(zip(gradients, trainable_variables))
         self.setup_next_minibatches()
-        if (self.step % self.log_every_n_step) == 0:
-            self.log_metrics()
+        # if (self.step % self.log_every_n_step) == 0:
+        #     self.log_metrics()
         self.step += 1
 
     def log_metrics(self) -> None:

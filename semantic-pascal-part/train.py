@@ -109,8 +109,7 @@ def train(
                 theory.train_step_from_domains()
         theory.reset_metrics()
         evaluation.test_step(theory, test_datasets=test_datasets, loggers=test_loggers,
-                             step=theory.step)
-
+                             step=theory.step, eval_partof_and_reasoning= epoch == epoch_range[1] - 1)
 
 if __name__ == "__main__":
     # check if run already exists

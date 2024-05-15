@@ -57,7 +57,7 @@ class FocalAggreg():
             pt = tf.math.exp(xs)
         else:
             pt = xs
-            xs = tf.math.log(xs)
+            xs = tf.math.log(xs + 1e-10)
 
-        return self.reduce_type(self.revert_log(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs)), axis=axis,
+        return self.reduce_type(tf.math.multiply(tf.math.pow((1 - pt), self.gamma), xs), axis=axis,
                                 keepdims=keepdims)

@@ -9,7 +9,7 @@ from tqdm import tqdm
 from wakepy import keep
 
 # Percorso della directory dei file di configurazione
-configs_dir = "config_revert_log"
+configs_dir = "config"
 
 # Trova tutti i file YAML nella directory dei file di configurazione
 config_files = list(glob.glob(os.path.join(configs_dir, "*.yml")))

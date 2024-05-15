@@ -129,13 +129,17 @@ def test_step(
         theory: ltnw.Theory,
         test_datasets: TestDatasets,
         loggers: list[ltnu.MetricsLogger],
-        step: int = None
+        step: int = None,
+        eval_partof_and_reasoning: bool = False
 ) -> None:
-    partof_metrics = evaluate_partof_and_reasoning(theory, test_datasets)
+    if eval_partof_and_reasoning:
+        partof_metrics = evaluate_partof_and_reasoning(theory, test_datasets)
+        partof_metrics.print()
+    else:
+        partof_metrics = None
     type_metrics = evaluate_type(theory, test_datasets)
-    partof_metrics.print()
     type_metrics.print()
-    dict_metrics = {**partof_metrics.as_dict(), **type_metrics.as_dict()}
+    dict_metrics = {**type_metrics.as_dict(), **(partof_metrics.as_dict() if partof_metrics is not None else {})}
     for logger in loggers:
         if isinstance(logger, WandbMetricsLogger):
             logger.log_dict_of_values({f"test/{k}": v for k, v in dict_metrics.items()})
