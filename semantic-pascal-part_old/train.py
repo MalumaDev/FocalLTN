@@ -130,15 +130,15 @@ if __name__ == "__main__":
 
     name += f"_{config['random_seed']}"
     pname = f"NeSy24PascalPart_{config['data_category'].upper()}_New"
-    # try:
-    #     runs = wandb.Api().runs(pname)
-    #     for run in runs:
-    #         if run.name == name:
-    #             logging.info(f"Run {name} already exists.")
-    #             sys.exit()
-    # except Exception as e:
-    #     logging.error(e)
-    #     print("Could not check if run already exists. Continue anyway.")
+    try:
+        runs = wandb.Api().runs(pname)
+        for run in runs:
+            if run.name == name:
+                logging.info(f"Run {name} already exists.")
+                sys.exit()
+    except Exception as e:
+        logging.error(e)
+        print("Could not check if run already exists. Continue anyway.")
 
     keras.utils.set_random_seed(config["random_seed"])
     logging.info("Loading training data.")
