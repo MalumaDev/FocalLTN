@@ -128,6 +128,8 @@ if __name__ == "__main__":
 
     Path("logging/dataframes/").mkdir(parents=True, exist_ok=True)
 
+    if "gamma" in config:
+        name += f"_{config['gamma']}"
     name += f"_{config['random_seed']}"
     pname = f"NeSy24PascalPart_{config['data_category'].upper()}_New"
     try:

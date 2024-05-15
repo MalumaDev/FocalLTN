@@ -19,7 +19,7 @@ def main(folder):
     # Trova tutti i file YAML nella directory dei file di configurazione
     config_file = list(Path(configs_dir).glob("*.yml"))[0]
     seeds = [1300, 1301, 1302, 1303, 1304]
-    # seeds.reverse()
+    seeds.reverse()
     types = ["focal_ltn", "focal_log_ltn"]
     gamma = [1, 6]
 
