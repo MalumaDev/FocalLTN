@@ -19,8 +19,9 @@ def main(folder):
     # Trova tutti i file YAML nella directory dei file di configurazione
     config_file = list(Path(configs_dir).glob("*.yml"))[0]
     seeds = [1300, 1301, 1302, 1303, 1304]
+    # seeds.reverse()
     types = ["focal_ltn", "focal_log_ltn"]
-    gamma = [0, 1, 6]
+    gamma = [1, 6]
 
     shutil.copy(config_file, destination_file)
     with open(destination_file, "r") as f:
