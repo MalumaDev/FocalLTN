@@ -2,6 +2,7 @@ import datetime
 import logging
 import random
 import sys
+from pathlib import Path
 
 sys.path.insert(1, '../')
 from typing import Any
@@ -124,6 +125,8 @@ if __name__ == "__main__":
         name += f"_{config['data_ratio']}"
 
     config["group_name"] = name
+
+    Path("logging/dataframes/").mkdir(parents=True, exist_ok=True)
 
     name += f"_{config['random_seed']}"
     pname = f"NeSy24PascalPart_{config['data_category'].upper()}_New"
